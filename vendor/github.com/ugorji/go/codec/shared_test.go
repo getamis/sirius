@@ -45,6 +45,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"sync"
 	"testing"
 )
@@ -133,6 +135,7 @@ var (
 )
 
 func init() {
+	log.SetOutput(ioutil.Discard) // don't allow things log to standard out/err
 	testHEDs = make([]testHED, 0, 32)
 	testHandles = append(testHandles,
 		// testNoopH,
@@ -145,7 +148,7 @@ func init() {
 func testInitFlags() {
 	// delete(testDecOpts.ExtFuncs, timeTyp)
 	flag.IntVar(&testDepth, "tsd", 0, "Test Struc Depth")
-	flag.BoolVar(&testVerbose, "tv", false, "Test Verbose")
+	flag.BoolVar(&testVerbose, "tv", false, "Test Verbose (no longer used - here for compatibility)")
 	flag.BoolVar(&testInitDebug, "tg", false, "Test Init Debug")
 	flag.IntVar(&testUseIoEncDec, "ti", -1, "Use IO Reader/Writer for Marshal/Unmarshal ie >= 0")
 	flag.BoolVar(&testUseIoWrapper, "tiw", false, "Wrap the IO Reader/Writer with a base pass-through reader/writer")
@@ -274,7 +277,7 @@ func logT(x interface{}, format string, args ...interface{}) {
 		t.Logf(format, args...)
 	} else if b, ok := x.(*testing.B); ok && b != nil {
 		b.Logf(format, args...)
-	} else if testVerbose {
+	} else { // if testing.Verbose() { // if testVerbose {
 		if len(format) == 0 || format[len(format)-1] != '\n' {
 			format = format + "\n"
 		}

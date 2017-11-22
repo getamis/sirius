@@ -14,16 +14,68 @@
 
 package log
 
-type Logger interface {
-	Infof(format string, args ...interface{})
-	Debugf(format string, args ...interface{})
-	Warningf(format string, args ...interface{})
-	Errorf(format string, args ...interface{})
-	Fatalf(format string, args ...interface{})
+import (
+	"fmt"
+	"os"
 
-	Info(args ...interface{})
-	Debug(args ...interface{})
-	Warning(args ...interface{})
-	Error(args ...interface{})
-	Fatal(args ...interface{})
+	log "github.com/Sirupsen/logrus"
+)
+
+func newLogger(ctx ...interface{}) Logger {
+	l := &logger{
+		logger:   log.New(),
+		contexts: make(map[string]interface{}),
+	}
+
+	l.logger.Formatter = &defaultFormatter{
+		EnableColors: true,
+	}
+	l.logger.Out = os.Stdout
+	l.logger.SetLevel(log.DebugLevel)
+
+	return l.New(ctx...)
+}
+
+// ----------------------------------------------------------------------------
+
+type logger struct {
+	logger   *log.Logger
+	contexts map[string]interface{}
+}
+
+func (l *logger) New(ctx ...interface{}) Logger {
+	_ = l.withFields(ctx...)
+	return l
+}
+
+func (l *logger) Debug(msg string, ctx ...interface{}) {
+	l.withFields(ctx...).Debug(msg)
+}
+
+func (l *logger) Info(msg string, ctx ...interface{}) {
+	l.withFields(ctx...).Info(msg)
+}
+
+func (l *logger) Warn(msg string, ctx ...interface{}) {
+	l.withFields(ctx...).Warn(msg)
+}
+
+func (l *logger) Error(msg string, ctx ...interface{}) {
+	l.withFields(ctx...).Error(msg)
+}
+
+func (l *logger) Crit(msg string, ctx ...interface{}) {
+	l.withFields(ctx...).Fatal(msg)
+}
+
+func (l *logger) withFields(ctx ...interface{}) *log.Entry {
+	if len(ctx)%2 != 0 {
+		ctx = append(ctx, nil)
+	}
+
+	for i := 0; i < len(ctx)/2; i = i + 2 {
+		l.contexts[fmt.Sprintf("%s", ctx[i])] = ctx[i+1]
+	}
+
+	return l.logger.WithFields(l.contexts)
 }

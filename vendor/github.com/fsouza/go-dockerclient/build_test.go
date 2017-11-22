@@ -1,7 +1,3 @@
-// Copyright 2014 go-dockerclient authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 package docker
 
 import (
@@ -10,22 +6,19 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 
-	"github.com/docker/docker/pkg/archive"
+	"github.com/fsouza/go-dockerclient/external/github.com/docker/docker/pkg/archive"
 )
 
 func TestBuildImageMultipleContextsError(t *testing.T) {
-	t.Parallel()
 	fakeRT := &FakeRoundTripper{message: "", status: http.StatusOK}
 	client := newTestClient(fakeRT)
 	var buf bytes.Buffer
 	opts := BuildImageOptions{
 		Name:                "testImage",
 		NoCache:             true,
-		CacheFrom:           []string{"a", "b", "c"},
 		SuppressOutput:      true,
 		RmTmpContainer:      true,
 		ForceRmTmpContainer: true,
@@ -40,7 +33,6 @@ func TestBuildImageMultipleContextsError(t *testing.T) {
 }
 
 func TestBuildImageContextDirDockerignoreParsing(t *testing.T) {
-	t.Parallel()
 	fakeRT := &FakeRoundTripper{message: "", status: http.StatusOK}
 	client := newTestClient(fakeRT)
 
@@ -52,20 +44,18 @@ func TestBuildImageContextDirDockerignoreParsing(t *testing.T) {
 			t.Errorf("error removing symlink on demand: %s", err)
 		}
 	}()
-	workingdir, err := os.Getwd()
 
 	var buf bytes.Buffer
 	opts := BuildImageOptions{
 		Name:                "testImage",
 		NoCache:             true,
-		CacheFrom:           []string{"a", "b", "c"},
 		SuppressOutput:      true,
 		RmTmpContainer:      true,
 		ForceRmTmpContainer: true,
 		OutputStream:        &buf,
-		ContextDir:          filepath.Join(workingdir, "testing", "data"),
+		ContextDir:          "testing/data",
 	}
-	err = client.BuildImage(opts)
+	err := client.BuildImage(opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +66,7 @@ func TestBuildImageContextDirDockerignoreParsing(t *testing.T) {
 	}
 
 	defer func() {
-		if err = os.RemoveAll(tmpdir); err != nil {
+		if err := os.RemoveAll(tmpdir); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -112,7 +102,6 @@ func TestBuildImageContextDirDockerignoreParsing(t *testing.T) {
 }
 
 func TestBuildImageSendXRegistryConfig(t *testing.T) {
-	t.Parallel()
 	fakeRT := &FakeRoundTripper{message: "", status: http.StatusOK}
 	client := newTestClient(fakeRT)
 	var buf bytes.Buffer

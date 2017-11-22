@@ -5,6 +5,8 @@
 
 package codec
 
+import "time"
+
 // This file contains values used by tests alone.
 // This is where we may try out different things,
 // that other engines may not support or may barf upon
@@ -55,7 +57,15 @@ type wrapInt64 int64
 type wrapUint8 uint8
 type wrapBytes []uint8
 
+type AnonInTestStrucIntf struct {
+	Islice []interface{}
+	Ms     map[string]interface{}
+	Nintf  interface{} //don't set this, so we can test for nil
+	T      time.Time
+}
+
 var testWRepeated512 wrapBytes
+var testStrucTime = time.Date(2012, 2, 2, 2, 2, 2, 2000, time.UTC).UTC()
 
 func init() {
 	var testARepeated512 [512]byte
@@ -67,7 +77,7 @@ func init() {
 
 type TestStrucFlex struct {
 	_struct struct{} `codec:",omitempty"` //set omitempty for every field
-	testStrucCommon
+	TestStrucCommon
 
 	Mis     map[int]string
 	Mbu64   map[bool]struct{}
@@ -80,6 +90,14 @@ type TestStrucFlex struct {
 	Ci64       wrapInt64
 	Swrapbytes []wrapBytes
 	Swrapuint8 []wrapUint8
+
+	Ui64array      [4]uint64
+	Ui64slicearray []*[4]uint64
+
+	// make this a ptr, so that it could be set or not.
+	// for comparison (e.g. with msgp), give it a struct tag (so it is not inlined),
+	// make this one omitempty (so it is excluded if nil).
+	*AnonInTestStrucIntf `json:",omitempty"`
 
 	//M map[interface{}]interface{}  `json:"-",bson:"-"`
 	Mtsptr     map[string]*TestStrucFlex
@@ -132,8 +150,23 @@ func newTestStrucFlex(depth, n int, bench, useInterface, useStringKeyOnly bool) 
 		Swrapuint8: []wrapUint8{
 			'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
 		},
+		Ui64array: [4]uint64{4, 16, 64, 256},
 	}
-	populateTestStrucCommon(&ts.testStrucCommon, n, bench, useInterface, useStringKeyOnly)
+
+	ts.Ui64slicearray = []*[4]uint64{&ts.Ui64array, &ts.Ui64array}
+
+	if useInterface {
+		ts.AnonInTestStrucIntf = &AnonInTestStrucIntf{
+			Islice: []interface{}{strRpt(n, "true"), true, strRpt(n, "no"), false, uint64(288), float64(0.4)},
+			Ms: map[string]interface{}{
+				strRpt(n, "true"):     strRpt(n, "true"),
+				strRpt(n, "int64(9)"): false,
+			},
+			T: testStrucTime,
+		}
+	}
+
+	populateTestStrucCommon(&ts.TestStrucCommon, n, bench, useInterface, useStringKeyOnly)
 	if depth > 0 {
 		depth--
 		if ts.Mtsptr == nil {

@@ -14,36 +14,59 @@
 
 package log
 
+import "os"
+
 var (
 	root = newLogger()
 )
+
+func init() {
+	PrintOrigins(true)
+
+	root.SetHandler(
+		MultiHandler(
+			StreamHandler(os.Stdout, TerminalFormat(true)),
+		),
+	)
+}
+
+func newLogger() *logger {
+	l := &logger{[]interface{}{}, new(swapHandler)}
+	return l
+}
 
 // New returns a new Logger that has this logger's context plus the given context
 func New(ctx ...interface{}) Logger {
 	return root.New(ctx...)
 }
 
-// Debug is a convenient alias for root.Debug
+// Trace is a convenient alias for Root().Trace
+func Trace(msg string, ctx ...interface{}) {
+	root.write(msg, LvlTrace, ctx)
+}
+
+// Debug is a convenient alias for Root().Debug
 func Debug(msg string, ctx ...interface{}) {
-	root.Debug(msg, ctx...)
+	root.write(msg, LvlDebug, ctx)
 }
 
-// Info is a convenient alias for root.Info
+// Info is a convenient alias for Root().Info
 func Info(msg string, ctx ...interface{}) {
-	root.Info(msg, ctx...)
+	root.write(msg, LvlInfo, ctx)
 }
 
-// Warn is a convenient alias for root.Warn
+// Warn is a convenient alias for Root().Warn
 func Warn(msg string, ctx ...interface{}) {
-	root.Warn(msg, ctx...)
+	root.write(msg, LvlWarn, ctx)
 }
 
-// Error is a convenient alias for root.Error
+// Error is a convenient alias for Root().Error
 func Error(msg string, ctx ...interface{}) {
-	root.Error(msg, ctx...)
+	root.write(msg, LvlError, ctx)
 }
 
-// Crit is a convenient alias for root.Crit
+// Crit is a convenient alias for Root().Crit
 func Crit(msg string, ctx ...interface{}) {
-	root.Crit(msg, ctx...)
+	root.write(msg, LvlCrit, ctx)
+	os.Exit(1)
 }

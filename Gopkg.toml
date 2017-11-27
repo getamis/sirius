@@ -22,20 +22,20 @@
 
 
 [[constraint]]
-  name = "github.com/Sirupsen/logrus"
-  version = "1.0.3"
-
-[[constraint]]
   name = "github.com/coreos/etcd"
   version = "3.2.10"
 
-[[constraint]]
+[[override]]
+  branch = "master"
   name = "github.com/fsouza/go-dockerclient"
-  version = "docker-1.9/go-1.4"
 
 [[constraint]]
   name = "github.com/go-sql-driver/mysql"
   version = "1.3.0"
+
+[[constraint]]
+  name = "github.com/go-stack/stack"
+  version = "1.7.0"
 
 [[constraint]]
   branch = "master"
@@ -54,7 +54,7 @@
   version = "1.2.0"
 
 [[constraint]]
-  branch = "addlog"
+  branch = "master"
   name = "github.com/prometheus/common"
 
 [[constraint]]
@@ -80,3 +80,7 @@
 [[constraint]]
   name = "gopkg.in/redis.v3"
   version = "3.6.4"
+
+[[override]]
+  name = "github.com/ugorji/go"
+  revision = "8c0409fcbb70099c748d71f714529204975f6c3f"

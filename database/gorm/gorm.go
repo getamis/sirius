@@ -105,13 +105,13 @@ func connectToDatabase(driver, connectionString string, o *database.Options) (*g
 		select {
 		case <-timer.C:
 			if o.Logger != nil {
-				o.Logger.Errorf("Connecting to database timeout, %v", lastErr)
+				o.Logger.Error("Connecting to database timeout", "err", lastErr)
 			}
 			return nil, lastErr
 		case <-ticker.C:
 			gormDB, lastErr = getDB()
 			if o.Logger != nil {
-				o.Logger.Warningf("Failed to connect to database, %v, retry...", lastErr)
+				o.Logger.Warn("Failed to connect to database, retry...", "err", lastErr)
 			}
 			if lastErr == nil {
 				return gormDB, nil

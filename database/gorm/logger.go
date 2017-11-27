@@ -15,6 +15,8 @@
 package gorm
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
 
 	"github.com/getamis/sirius/log"
@@ -27,5 +29,5 @@ type logger struct {
 }
 
 func (l *logger) Print(args ...interface{}) {
-	l.logger.Debug(args...)
+	l.logger.Debug(fmt.Sprint(args...))
 }

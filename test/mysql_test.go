@@ -45,8 +45,8 @@ func TestMySQLContainer(t *testing.T) {
 	db.Close()
 
 	// close MySQL
-	// assert.NoError(t, container.Stop())
-	// time.Sleep(100 * time.Millisecond)
-	// _, err = gorm.Open("mysql", container.URL)
-	// assert.Error(t, err, "should got error")
+	assert.NoError(t, container.Stop())
+	time.Sleep(100 * time.Millisecond)
+	_, err = gorm.Open("mysql", container.URL)
+	assert.Error(t, err, "should got error")
 }

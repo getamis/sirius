@@ -15,47 +15,52 @@
 package kv
 
 import (
-	"encoding/json"
 	"time"
 )
 
-type putOptions struct {
+type PutOptions struct {
 	IsPrefix bool          // Optional, indicate if the given key is a prefix
 	TTL      time.Duration // Optional, expiration time associated with the key
 }
 
-type PutOption func(*putOptions)
+type PutOption func(*PutOptions)
 
 func IsPrefix(isPrefix bool) PutOption {
-	return func(o *putOptions) {
+	return func(o *PutOptions) {
 		o.IsPrefix = isPrefix
 	}
 }
 
 func PutExpiration(t time.Duration) PutOption {
-	return func(o *putOptions) {
+	return func(o *PutOptions) {
 		o.TTL = t
 	}
 }
 
 // ----------------------------------------------------------------------------
 
-type lockOptions struct {
+type LockOptions struct {
 	Value     []byte        // Optional, value to associate with the lock
 	TTL       time.Duration // Optional, expiration time associated with the lock
 	RenewLock chan struct{} // Optional, chan used to control and stop the session ttl renewal for the lock
 }
 
-type LockOption func(*lockOptions)
+type LockOption func(*LockOptions)
 
 func LockExpiration(t time.Duration) LockOption {
-	return func(o *lockOptions) {
+	return func(o *LockOptions) {
 		o.TTL = t
 	}
 }
 
-func LockValue(value interface{}) LockOption {
-	return func(o *lockOptions) {
-		o.Value, _ = json.Marshal(value)
+func LockValue(value []byte) LockOption {
+	return func(o *LockOptions) {
+		o.Value = value
+	}
+}
+
+func RenewLock(r chan struct{}) LockOption {
+	return func(o *LockOptions) {
+		o.RenewLock = r
 	}
 }

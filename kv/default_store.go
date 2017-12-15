@@ -30,7 +30,7 @@ type defaultStore struct {
 }
 
 func (s *defaultStore) Put(key string, value []byte, opts ...PutOption) error {
-	o := &putOptions{}
+	o := &PutOptions{}
 	for _, opt := range opts {
 		opt(o)
 	}

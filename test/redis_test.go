@@ -19,7 +19,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/redis.v3"
+	"gopkg.in/redis.v5"
 )
 
 func TestRedisContainer(t *testing.T) {

@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	redis "gopkg.in/redis.v3"
+	redis "gopkg.in/redis.v5"
 )
 
 type RedisContainer struct {

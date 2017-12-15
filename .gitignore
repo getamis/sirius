@@ -15,3 +15,7 @@
 
 # Code coverage
 coverage.txt
+
+# IntelliJ
+*.iml
+.idea

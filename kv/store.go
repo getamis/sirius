@@ -29,6 +29,8 @@ var (
 	ErrUnableToLock = errors.New("failed to acquire the lock")
 )
 
+//go:generate mockgen -source=store.go -destination=mock_store.go -package=kv
+
 // Store is the interface to access the backend
 type Store interface {
 	// Put a value with the specified key

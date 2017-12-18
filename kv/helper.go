@@ -57,3 +57,15 @@ func SplitKey(key string) (path []string) {
 func join(parts []string) string {
 	return strings.Join(parts, "/")
 }
+
+// ----------------------------------------------------------------------------
+
+type keyMaker func(identifier string, args ...string) string
+
+// NewKey given separator, package name, and tags to generate the key
+func NewKey(separator string, pkgName string, tags ...string) keyMaker {
+	prefix := append([]string{pkgName}, tags...)
+	return func(identifier string, args ...string) string {
+		return strings.Join(append(prefix, append([]string{identifier}, args...)...), separator)
+	}
+}

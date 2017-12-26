@@ -55,4 +55,5 @@ func TestRedisStore(t *testing.T) {
 	testutils.RunTestLockTTL(t, kv, lockTTL)
 	testutils.RunTestTTL(t, kv, kvTTL)
 	testutils.RunCleanup(t, kv)
+	testutils.RunTestIncrement(t, kv)
 }

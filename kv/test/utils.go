@@ -58,6 +58,10 @@ func RunTestTTL(t *testing.T, kv store.Store, backup store.Store) {
 	testPutTTL(t, kv, backup)
 }
 
+func RunTestIncrement(t *testing.T, kv store.Store) {
+	testIncrement(t, kv)
+}
+
 func checkPairNotNil(t *testing.T, pair *store.KeyValue) {
 	if assert.NotNil(t, pair) {
 		if !assert.NotNil(t, pair.Value) {
@@ -497,6 +501,28 @@ func testPutTTL(t *testing.T, kv store.Store, otherConn store.Store) {
 	pair, err = kv.Get(secondKey)
 	assert.Error(t, err)
 	assert.Nil(t, pair)
+}
+
+func testIncrement(t *testing.T, kv store.Store) {
+	key := "testIncrementKey"
+	invalidKey := "testIncrementInvalid"
+
+	// key does not exist
+	value, err := kv.Increment(key)
+	assert.NoError(t, err)
+	assert.Equal(t, value, int64(0))
+
+	// key exist
+	value, err = kv.Increment(key)
+	assert.NoError(t, err)
+	assert.Equal(t, value, int64(1))
+
+	// invalid value stored at key
+	err = kv.Put(invalidKey, []byte("invalid"))
+	assert.NoError(t, err)
+
+	_, err = kv.Increment(invalidKey)
+	assert.Equal(t, err, store.ErrInvalidValue)
 }
 
 func testList(t *testing.T, kv store.Store) {

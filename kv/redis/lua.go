@@ -15,8 +15,9 @@
 package redis
 
 const (
-	cmdCAS = "cas"
-	cmdCAD = "cad"
+	cmdCAS  = "cas"
+	cmdCAD  = "cad"
+	cmdIncr = "incr"
 )
 
 func luaScript() string {
@@ -95,10 +96,22 @@ local cad = function(key, old)
     end
 end
 
+-- incr is incrementing the number stored at key by one. If the key does not exist,
+-- it is set to 0. An error is returned if the key contains a value of the
+-- wrong type or contains a string that can not be represented as integer.
+local incr = function(key)
+	if not exists(key) then
+		return redis.call('incrby', key, 0)
+	else
+		return redis.call('incr', key)
+	end
+end
+
 -- Launcher exposes interfaces which be called by passing the arguments.
 local Launcher = {
     cas = cas,
-    cad = cad
+    cad = cad,
+    incr = incr,
 }
 
 local command = assert(Launcher[command_name], 'Unknown command ' .. command_name)

@@ -642,6 +642,19 @@ func (r *Redis) Close() {
 	r.client.Close()
 }
 
+// Increment increments the number stored at key by one
+func (r *Redis) Increment(key string) (int64, error) {
+	value, err := r.runScript(
+		cmdIncr,
+		normalize(key),
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	return value.(int64), nil
+}
+
 func scanRegex(directory string) string {
 	return fmt.Sprintf("%s*", directory)
 }
@@ -658,6 +671,13 @@ func (r *Redis) runScript(args ...interface{}) (interface{}, error) {
 	if err != nil && strings.Contains(err.Error(), "redis: value has been changed") {
 		return nil, store.ErrKeyModified
 	}
+	if err != nil && strings.Contains(err.Error(), "value is not an integer or out of range") {
+		return nil, store.ErrInvalidValue
+	}
+	if err != nil && strings.Contains(err.Error(), "increment or decrement would overflow") {
+		return nil, store.ErrOverflow
+	}
+
 	return res, err
 }
 

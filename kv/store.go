@@ -27,6 +27,10 @@ var (
 	ErrKeyExists = errors.New("key exists")
 	// ErrUnableToLock is returned when there is an error when acquiring a lock on a key
 	ErrUnableToLock = errors.New("failed to acquire the lock")
+	// ErrInvalidValue is returned when value is not an integer or out of range
+	ErrInvalidValue = errors.New("value is not an integer or out of range")
+	// ErrInvalidValue is returned on integer overflow
+	ErrOverflow = errors.New("increment or decrement would overflow")
 )
 
 //go:generate mockgen -source=store.go -destination=mock_store.go -package=kv
@@ -70,6 +74,10 @@ type Store interface {
 
 	// Close the connection
 	Close()
+
+	// Increment increments the number stored at key by one. If the key does not exist,
+	// it is set to 0
+	Increment(key string) (int64, error)
 }
 
 // KeyValue represents {Key, Value, Revision} tuple

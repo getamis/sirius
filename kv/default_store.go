@@ -107,3 +107,5 @@ func (s *defaultStore) Lock(key string, opts ...LockOption) (Locker, error) {
 }
 
 func (s *defaultStore) Close() {}
+
+func (s *defaultStore) Increment(key string) (int64, error) { return 0, nil }

@@ -604,13 +604,14 @@ func (r *Redis) cas(key string, old, new *store.KeyValue, secInStr string) error
 		return err
 	}
 
-	return r.runScript(
+	_, err = r.runScript(
 		cmdCAS,
 		key,
 		oldVal,
 		newVal,
 		secInStr,
 	)
+	return err
 }
 
 // AtomicDelete is an atomic delete operation on a single value
@@ -628,11 +629,12 @@ func (r *Redis) cad(key string, old *store.KeyValue) error {
 		return err
 	}
 
-	return r.runScript(
+	_, err = r.runScript(
 		cmdCAD,
 		key,
 		oldVal,
 	)
+	return err
 }
 
 // Close the store connection
@@ -644,19 +646,19 @@ func scanRegex(directory string) string {
 	return fmt.Sprintf("%s*", directory)
 }
 
-func (r *Redis) runScript(args ...interface{}) error {
-	err := r.script.Run(
+func (r *Redis) runScript(args ...interface{}) (interface{}, error) {
+	res, err := r.script.Run(
 		r.client,
 		nil,
 		args...,
-	).Err()
+	).Result()
 	if err != nil && strings.Contains(err.Error(), "redis: key is not found") {
-		return store.ErrKeyNotFound
+		return nil, store.ErrKeyNotFound
 	}
 	if err != nil && strings.Contains(err.Error(), "redis: value has been changed") {
-		return store.ErrKeyModified
+		return nil, store.ErrKeyModified
 	}
-	return err
+	return res, err
 }
 
 func normalize(key string) string {

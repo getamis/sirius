@@ -17,6 +17,8 @@ package log
 import (
 	"bytes"
 	"fmt"
+	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -32,11 +34,6 @@ const (
 	floatFormat    = 'f'
 	termMsgJust    = 40
 )
-
-// locationTrims are trimmed for display to avoid unwieldy log lines.
-var locationTrims = []string{
-	"github.com/getamis/sirius/",
-}
 
 // PrintOrigins sets or unsets log location (file:line) printing for terminal
 // format output.
@@ -121,9 +118,8 @@ func TerminalFormat(usecolor bool) Format {
 		if atomic.LoadUint32(&locationEnabled) != 0 {
 			// Log origin printing was requested, format the location path and line number
 			location := fmt.Sprintf("%+v", r.Call)
-			for _, prefix := range locationTrims {
-				location = strings.TrimPrefix(location, prefix)
-			}
+			location = path.Join(filepath.Base(filepath.Dir(location)), filepath.Base(location))
+
 			// Maintain the maximum location length for fancyer alignment
 			align := int(atomic.LoadUint32(&locationLength))
 			if align < len(location) {

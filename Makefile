@@ -29,15 +29,21 @@ test: coverage.txt FORCE
 	done;
 
 # .proto files
-PROTOS :=
+PROTOS := \
+        health/*.proto
 
-grpc: FORCE
-	@protoc \
+PROTOC_INCLUDES := \
 		-I$(CURDIR)/vendor/github.com/golang/protobuf/ptypes \
 		-I$(CURDIR)/vendor/github.com/golang/protobuf/ptypes/any \
 		-I$(CURDIR)/vendor/github.com/golang/protobuf/ptypes/struct \
-		-I$(GOPATH)/src \
-		--go_out=plugins=grpc:$(GOPATH)/src $(PROTOS)
+		-I$(CURDIR)/vendor/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+		-I$(GOPATH)/src
+
+grpc: FORCE
+	@protoc $(PROTOC_INCLUDES) \
+		--gofast_out=plugins=grpc:$(GOPATH)/src $(addprefix $(CURDIR)/,$(PROTOS))
+	@protoc $(PROTOC_INCLUDES) \
+		--grpc-gateway_out=logtostderr=true:$(GOPATH)/src $(addprefix $(CURDIR)/,$(PROTOS))
 
 PHONY: help
 help:

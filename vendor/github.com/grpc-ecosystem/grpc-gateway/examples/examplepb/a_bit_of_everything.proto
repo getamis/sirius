@@ -36,7 +36,7 @@ option (grpc.gateway.protoc_gen_swagger.options.openapiv2_swagger) = {
 
 
 // Intentionaly complicated message type to cover much features of Protobuf.
-// NEXT ID: 27
+// NEXT ID: 30
 message ABitOfEverything {
 	option (grpc.gateway.protoc_gen_swagger.options.openapiv2_schema) = {
 		external_docs: {
@@ -72,7 +72,7 @@ message ABitOfEverything {
 	fixed32 fixed32_value = 9;
 	bool bool_value = 10;
 	string string_value = 11;
-	// TODO(yugui) add bytes_value
+	bytes bytes_value = 29;
 	uint32 uint32_value = 13;
 	NumericEnum enum_value = 14;
 	sfixed32 sfixed32_value = 15;
@@ -186,6 +186,10 @@ service ABitOfEverythingService {
 			}
 		};
 		option (grpc.gateway.protoc_gen_swagger.options.openapiv2_operation) = {
+			description: "Description Echo";
+			summary: "Summary: Echo rpc";
+			tags: "echo service";
+			tags: "echo rpc";
 			external_docs: {
 				url: "https://github.com/grpc-ecosystem/grpc-gateway";
 				description: "Find out more Echo";
@@ -204,12 +208,23 @@ service ABitOfEverythingService {
 			get: "/v2/example/timeout",
 		};
 	}
+	rpc ErrorWithDetails(google.protobuf.Empty) returns (google.protobuf.Empty) {
+		option (google.api.http) = {
+			get: "/v2/example/errorwithdetails",
+		};
+	}
 	rpc GetMessageWithBody(MessageWithBody) returns (google.protobuf.Empty) {
 		option (google.api.http) = {
 			post: "/v2/example/withbody/{id}",
 			body: "data"
 		};
 	}
+   rpc PostWithEmptyBody(Body) returns (google.protobuf.Empty) {
+       option (google.api.http) = {
+			post: "/v2/example/postwithemptybody/{name}",
+			body: "*"
+		};
+   }
 }
 
 service AnotherServiceWithNoBindings {

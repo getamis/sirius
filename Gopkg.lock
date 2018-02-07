@@ -110,10 +110,10 @@
   revision = "1e59b77b52bf8e4b449a57e6f79f21226d571845"
 
 [[projects]]
+  branch = "master"
   name = "github.com/grpc-ecosystem/grpc-gateway"
   packages = ["runtime","runtime/internal","utilities"]
-  revision = "07f5e79768022f9a3265235f0db4ac8c3f675fec"
-  version = "v1.3.1"
+  revision = "6658b3a4fd7017117532b54b5c6bf2fd2207ffc2"
 
 [[projects]]
   name = "github.com/jinzhu/gorm"
@@ -261,6 +261,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f90fc69bce7544fe7d46dda8edca66fdc2b1494efcf95ffe9ef49399599fa5ec"
+  inputs-digest = "7478b768206ed6afa0eb71d52c728487a61738223c6b782aaa8e10cde1d4c989"
   solver-name = "gps-cdcl"
   solver-version = 1

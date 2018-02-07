@@ -25,6 +25,29 @@ var wktSchemas = map[string]schemaCore{
 	".google.protobuf.Duration": schemaCore{
 		Type: "string",
 	},
+	".google.protobuf.StringValue": schemaCore{
+		Type: "string",
+	},
+	".google.protobuf.Int32Value": schemaCore{
+		Type:   "integer",
+		Format: "int32",
+	},
+	".google.protobuf.Int64Value": schemaCore{
+		Type:   "integer",
+		Format: "int64",
+	},
+	".google.protobuf.FloatValue": schemaCore{
+		Type:   "number",
+		Format: "float",
+	},
+	".google.protobuf.DoubleValue": schemaCore{
+		Type:   "number",
+		Format: "double",
+	},
+	".google.protobuf.BoolValue": schemaCore{
+		Type:   "boolean",
+		Format: "boolean",
+	},
 }
 
 func listEnumNames(enum *descriptor.Enum) (names []string) {
@@ -615,6 +638,17 @@ func renderServices(services []*descriptor.Service, paths swaggerPathsObject, re
 					// TODO(ivucica): this would be better supported by looking whether the method is deprecated in the proto file
 					operationObject.Deprecated = opts.Deprecated
 
+					if opts.Summary != "" {
+						operationObject.Summary = opts.Summary
+					}
+					if opts.Description != "" {
+						operationObject.Description = opts.Description
+					}
+					if len(opts.Tags) > 0 {
+						operationObject.Tags = make([]string, len(opts.Tags))
+						copy(operationObject.Tags, opts.Tags)
+					}
+
 					// TODO(ivucica): add remaining fields of operation object
 				}
 
@@ -696,6 +730,12 @@ func applyTemplate(p param) (string, error) {
 		if spb.Info != nil {
 			if spb.Info.Title != "" {
 				s.Info.Title = spb.Info.Title
+			}
+			if spb.Info.Description != "" {
+				s.Info.Description = spb.Info.Description
+			}
+			if spb.Info.TermsOfService != "" {
+				s.Info.TermsOfService = spb.Info.TermsOfService
 			}
 			if spb.Info.Version != "" {
 				s.Info.Version = spb.Info.Version

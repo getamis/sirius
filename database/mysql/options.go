@@ -106,10 +106,11 @@ func ToConnectionString(opts ...interface{}) (string, error) {
 
 func defaultOptions() *options {
 	return &options{
-		Protocol:     DefaultProtocol,
-		Address:      "localhost",
-		Port:         "3306",
-		UserName:     "root",
-		DatabaseName: "db",
+		Protocol:             DefaultProtocol,
+		Address:              "localhost",
+		Port:                 "3306",
+		UserName:             "root",
+		DatabaseName:         "db",
+		AllowNativePasswords: true,
 	}
 }

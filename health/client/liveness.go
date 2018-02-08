@@ -45,6 +45,7 @@ var LivenessCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		defer conn.Close()
 		c := health.NewHealthCheckServiceClient(conn)
 		_, err = c.Liveness(context.Background(), nil)
 		return err

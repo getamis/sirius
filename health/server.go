@@ -44,5 +44,9 @@ func (s *defaultServer) Readiness(ctx context.Context, req *EmptyRequest) (*Empt
 	if s.readinessChecker == nil {
 		return nil, nil
 	}
-	return nil, status.Error(codes.Unavailable, s.readinessChecker().Error())
+	err := s.readinessChecker()
+	if err == nil {
+		return nil, nil
+	}
+	return nil, status.Error(codes.Unavailable, err.Error())
 }

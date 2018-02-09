@@ -2,13 +2,26 @@
 # with Go source code. If you know what GOPATH is then you probably
 # don't need to bother with make.
 
-.PHONY: proto all test clean
+PHONY += all docker test clean
 
 CURDIR := $(shell pwd)
+GOBIN := $(shell pwd)/build/bin
 
-all:
+TARGETS := $(sort $(notdir $(wildcard ./cmd/*)))
+PHONY += $(TARGETS)
 
-clean:
+all: $(TARGETS)
+
+.SECONDEXPANSION:
+$(TARGETS): $(addprefix $(GOBIN)/,$$@)
+
+$(GOBIN):
+	@mkdir -p $@
+
+$(GOBIN)/%: $(GOBIN) FORCE
+	@go build -v -o $@ ./cmd/$(notdir $@)
+	@echo "Done building."
+	@echo "Run \"$(subst $(CURDIR),.,$@)\" to launch $(notdir $@)."
 
 coverage.txt:
 	@touch $@
@@ -45,19 +58,23 @@ grpc: FORCE
 	@protoc $(PROTOC_INCLUDES) \
 		--grpc-gateway_out=logtostderr=true:$(GOPATH)/src $(addprefix $(CURDIR)/,$(PROTOS))
 
+clean:
+	rm -fr $(GOBIN)/*
+
 PHONY: help
 help:
 	@echo  'Generic targets:'
-	@echo  '  all               - Build all targets marked with [*]'
+	@echo  '  all                   - Build all targets marked with [*]'
+	@echo  '* health                - Build health client'
 	@echo  ''
 	@echo  'Protobuf targets:'
-	@echo  '  grpc              - Generate gRPC go bindings from .proto files'
+	@echo  '  grpc                  - Generate gRPC go bindings from .proto files'
 	@echo  ''
 	@echo  'Test targets:'
-	@echo  '  test              - Run all unit tests'
+	@echo  '  test                  - Run all unit tests'
 	@echo  ''
 	@echo  'Cleaning targets:'
-	@echo  '  clean             - Remove built executables'
+	@echo  '  clean                 - Remove built executables'
 	@echo  ''
 	@echo  'Execute "make" or "make all" to build all targets marked with [*] '
 	@echo  'For further info see the ./README.md file'

@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/getamis/sirius/health/client"
+	"github.com/getamis/sirius/cmd/health/client"
 )
 
 // RootCmd represents the base command when called without any subcommands

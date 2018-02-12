@@ -640,6 +640,11 @@ func (r *Redis) Close() {
 	r.client.Close()
 }
 
+// Ping is used to check if a connection is still alive
+func (r *Redis) Ping() error {
+	return r.client.Ping().Err()
+}
+
 func scanRegex(directory string) string {
 	return fmt.Sprintf("%s*", directory)
 }

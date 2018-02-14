@@ -17,20 +17,21 @@ package health
 import (
 	"context"
 
+	"github.com/getamis/sirius/log"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type CheckFn func() error
+type CheckFn func(context.Context) error
 
 // defaultServer is the implementation of HealthCheckServiceServer
 type defaultServer struct {
-	readinessChecker CheckFn
+	checkFns []CheckFn
 }
 
-func New(readinessChecker CheckFn) HealthCheckServiceServer {
+func New(checkFns ...CheckFn) HealthCheckServiceServer {
 	return &defaultServer{
-		readinessChecker: readinessChecker,
+		checkFns: checkFns,
 	}
 }
 
@@ -41,12 +42,20 @@ func (s *defaultServer) Liveness(ctx context.Context, req *EmptyRequest) (*Empty
 
 // Readiness is represented that whether application is ready to start accepting traffic or not.
 func (s *defaultServer) Readiness(ctx context.Context, req *EmptyRequest) (*EmptyResponse, error) {
-	if s.readinessChecker == nil {
+	if len(s.checkFns) == 0 {
 		return nil, nil
 	}
-	err := s.readinessChecker()
-	if err == nil {
-		return nil, nil
+	errCh := make(chan error, len(s.checkFns))
+	for _, checker := range s.checkFns {
+		go func(checker CheckFn) {
+			errCh <- checker(ctx)
+		}(checker)
 	}
-	return nil, status.Error(codes.Unavailable, err.Error())
+	for _ = range s.checkFns {
+		if err := <-errCh; err != nil {
+			log.Error("Failed to check readiness", "err", err)
+			return nil, status.Error(codes.Unavailable, err.Error())
+		}
+	}
+	return nil, nil
 }

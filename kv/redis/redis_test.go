@@ -28,12 +28,7 @@ var (
 )
 
 func makeRedisClient() store.Store {
-	kv := new([]string{client})
-
-	// NOTE: please turn on redis's notification
-	// before you using watch/watchtree/lock related features
-	kv.client.ConfigSet("notify-keyspace-events", "KA")
-
+	kv := new([]string{client}, true)
 	return kv
 }
 

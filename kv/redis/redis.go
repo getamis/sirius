@@ -39,15 +39,15 @@ var (
 
 // New creates a new Redis client given a list
 // of endpoints and optional config
-func New(endpoints []string, options ...RedisOption) (*Redis, error) {
+func New(endpoints []string, notification bool, options ...RedisOption) (*Redis, error) {
 	if len(endpoints) > 1 {
 		return nil, ErrMultipleEndpointsUnsupported
 	}
 
-	return new(endpoints, options...), nil
+	return new(endpoints, notification, options...), nil
 }
 
-func new(endpoints []string, options ...RedisOption) *Redis {
+func new(endpoints []string, notification bool, options ...RedisOption) *Redis {
 	rOption := &redis.Options{
 		Addr:         endpoints[0],
 		Password:     "", //TODO: make sure that the password can be supported in *redis.ClusterClient
@@ -59,8 +59,15 @@ func new(endpoints []string, options ...RedisOption) *Redis {
 		option(rOption)
 	}
 
+	client := redis.NewClient(rOption)
+	if notification {
+		// NOTE: please turn on redis's notification
+		// before you using watch/watchtree/lock related features
+		client.ConfigSet("notify-keyspace-events", "KA")
+	}
+
 	return &Redis{
-		client: redis.NewClient(rOption),
+		client: client,
 		script: redis.NewScript(luaScript()),
 		codec:  defaultCodec{},
 	}

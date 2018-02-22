@@ -26,6 +26,10 @@ import (
 	"github.com/getamis/sirius/health"
 )
 
+const (
+	defaultDialTimeout = 5 * time.Second
+)
+
 // ReadinessCmd represents the readiness command
 var ReadinessCmd = &cobra.Command{
 	Use:          "readiness",
@@ -36,7 +40,7 @@ var ReadinessCmd = &cobra.Command{
 		grpcAddr := fmt.Sprintf("%s:%d", host, port)
 
 		// dial remote server
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), defaultDialTimeout)
 		defer cancel()
 		conn, err := grpc.DialContext(ctx, grpcAddr,
 			grpc.WithInsecure(),
@@ -47,7 +51,7 @@ var ReadinessCmd = &cobra.Command{
 		}
 		defer conn.Close()
 		c := health.NewHealthCheckServiceClient(conn)
-		_, err = c.Readiness(context.Background(), nil)
+		_, err = c.Readiness(ctx, nil)
 		return err
 	},
 }

@@ -16,13 +16,20 @@ package health
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/grpc"
 )
 
+const (
+	defaultDialTimeout = 5 * time.Second
+)
+
 func GRPCServerHealthChecker(addr string) CheckFn {
 	return func(ctx context.Context) error {
-		conn, err := grpc.DialContext(ctx, addr,
+		dialCtx, cancel := context.WithTimeout(ctx, defaultDialTimeout)
+		defer cancel()
+		conn, err := grpc.DialContext(dialCtx, addr,
 			grpc.WithInsecure(),
 			grpc.WithBlock())
 		if err != nil {

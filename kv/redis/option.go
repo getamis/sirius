@@ -40,6 +40,18 @@ func WriteTimeout(t time.Duration) RedisOption {
 	}
 }
 
+func PoolSize(size int) RedisOption {
+	return func(r *redis.Options) {
+		r.PoolSize = size
+	}
+}
+
+func PoolTimeout(t time.Duration) RedisOption {
+	return func(r *redis.Options) {
+		r.PoolTimeout = t
+	}
+}
+
 func Password(pwd string) RedisOption {
 	return func(r *redis.Options) {
 		r.Password = pwd

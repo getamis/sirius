@@ -86,9 +86,5 @@
   version = "5.2.9"
 
 [[constraint]]
-  name = "github.com/golang/mock"
-  version = "1.0.0"
-
-[[constraint]]
   branch = "master"
   name = "github.com/grpc-ecosystem/grpc-gateway"

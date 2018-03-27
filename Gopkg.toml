@@ -88,3 +88,13 @@
 [[constraint]]
   branch = "master"
   name = "github.com/grpc-ecosystem/grpc-gateway"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
+
+  [[prune.project]]
+    name = "github.com/grpc-ecosystem/grpc-gateway"
+    non-go = false
+    unused-packages = false

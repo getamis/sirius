@@ -141,6 +141,8 @@ func TerminalFormat(usecolor bool) Format {
 				fmt.Fprintf(b, "%s[%s] %s ", lvl, r.Time.Format(termTimeFormat), r.Msg)
 			}
 		}
+		b.Write([]byte("\t"))
+
 		// try to justify the log output for short messages
 		length := utf8.RuneCountInString(r.Msg)
 		if len(r.Ctx) > 0 && length < termMsgJust {

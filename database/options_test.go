@@ -105,6 +105,51 @@ var _ = Describe("SQL Options", func() {
 				Expect(options.DriverOptions).Should(Equal(expectedOptions.DriverOptions))
 			})
 		})
+
+		Context("MaxIdleConns", func() {
+			It("should match", func() {
+				idle := 1
+				expectedOptions := &Options{
+					MaxIdleConns: idle,
+				}
+
+				options := &Options{}
+				fn := MaxIdleConns(idle)
+				fn(options)
+
+				Expect(options).Should(Equal(expectedOptions))
+			})
+		})
+
+		Context("MaxOpenConns", func() {
+			It("should match", func() {
+				open := 10
+				expectedOptions := &Options{
+					MaxOpenConns: open,
+				}
+
+				options := &Options{}
+				fn := MaxOpenConns(open)
+				fn(options)
+
+				Expect(options).Should(Equal(expectedOptions))
+			})
+		})
+
+		Context("ConnMaxLifetime", func() {
+			It("should match", func() {
+				d := 10 * time.Second
+				expectedOptions := &Options{
+					ConnMaxLifetime: d,
+				}
+
+				options := &Options{}
+				fn := ConnMaxLifetime(d)
+				fn(options)
+
+				Expect(options).Should(Equal(expectedOptions))
+			})
+		})
 	})
 })
 

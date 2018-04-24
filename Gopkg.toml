@@ -89,6 +89,14 @@
   branch = "master"
   name = "github.com/grpc-ecosystem/grpc-gateway"
 
+[[constraint]]
+  branch = "master"
+  name = "github.com/prometheus/client_golang"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/grpc-ecosystem/go-grpc-prometheus"
+
 [prune]
   go-tests = true
   unused-packages = true

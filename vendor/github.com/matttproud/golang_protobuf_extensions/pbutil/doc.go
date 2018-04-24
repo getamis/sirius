@@ -1,4 +1,4 @@
-// Copyright 2017 AMIS Technologies
+// Copyright 2013 Matt T. Proud
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,32 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package rpc
-
-import (
-	"crypto/tls"
-
-	"github.com/getamis/sirius/metrics"
-)
-
-type ServerOption func(*Server)
-
-// APIs to be registered to the RPC server
-func APIs(apis ...API) ServerOption {
-	return func(s *Server) {
-		s.apis = apis
-	}
-}
-
-// Credentials for the RPC server
-func Credentials(credentials *tls.Config) ServerOption {
-	return func(s *Server) {
-		s.credentials = credentials
-	}
-}
-
-func Metrics(metrics metrics.ServerMetrics) ServerOption {
-	return func(s *Server) {
-		s.grpcMetrics = metrics
-	}
-}
+// Package pbutil provides record length-delimited Protocol Buffer streaming.
+package pbutil

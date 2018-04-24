@@ -21,6 +21,8 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"github.com/getamis/sirius/metrics"
 )
 
 // NewServer creates a gRPC server with pre-configured services
@@ -33,6 +35,7 @@ func NewServer(opts ...ServerOption) *Server {
 
 	server.createGRPCServer()
 	server.registerAPIs()
+	server.initMetrics()
 
 	return server
 }
@@ -46,6 +49,7 @@ type API interface {
 type Server struct {
 	grpcServer  *grpc.Server
 	credentials *tls.Config
+	grpcMetrics metrics.ServerMetrics
 
 	apis []API
 }
@@ -73,11 +77,23 @@ func (s *Server) createGRPCServer() {
 		options = append(options, grpc.Creds(tls))
 	}
 
+	// metrics
+	if s.grpcMetrics != nil {
+		options = append(options, grpc.StreamInterceptor(s.grpcMetrics.StreamServerInterceptor()))
+		options = append(options, grpc.UnaryInterceptor(s.grpcMetrics.UnaryServerInterceptor()))
+	}
+
 	s.grpcServer = grpc.NewServer(options...)
 }
 
 func (s *Server) registerAPIs() {
 	for _, api := range s.apis {
 		api.Bind(s.grpcServer)
+	}
+}
+
+func (s *Server) initMetrics() {
+	if s.grpcMetrics != nil {
+		s.grpcMetrics.InitializeMetrics(s.grpcServer)
 	}
 }

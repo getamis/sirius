@@ -18,7 +18,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -36,7 +35,7 @@ var LivenessCmd = &cobra.Command{
 		grpcAddr := fmt.Sprintf("%s:%d", host, port)
 
 		// dial remote server
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		conn, err := grpc.DialContext(ctx, grpcAddr,
 			grpc.WithInsecure(),

@@ -16,12 +16,15 @@
 package client
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 )
 
 var (
-	host string
-	port int
+	host    string
+	port    int
+	timeout time.Duration
 )
 
 var HealthCmd = &cobra.Command{
@@ -37,4 +40,5 @@ func init() {
 	// add persistent flags for all subcommands
 	HealthCmd.PersistentFlags().StringVar(&host, "host", "localhost", "Host of remote gRPC server")
 	HealthCmd.PersistentFlags().IntVar(&port, "port", 8080, "Port of remote gRPC server")
+	HealthCmd.PersistentFlags().DurationVar(&timeout, "timeout", 10*time.Second, "Timeout in seconds for checking remote gRPC server")
 }

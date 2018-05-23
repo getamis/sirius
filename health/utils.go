@@ -19,13 +19,15 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+
+	"github.com/getamis/sirius/log"
 )
 
 const (
 	defaultDialTimeout = 5 * time.Second
 )
 
-func GRPCServerHealthChecker(addr string) CheckFn {
+func GRPCServerHealthChecker(addr, serviceName string) CheckFn {
 	return func(ctx context.Context) error {
 		dialCtx, cancel := context.WithTimeout(ctx, defaultDialTimeout)
 		defer cancel()
@@ -33,11 +35,10 @@ func GRPCServerHealthChecker(addr string) CheckFn {
 			grpc.WithInsecure(),
 			grpc.WithBlock())
 		if err != nil {
+			log.Error("Failed to dial grpc server", "addr", addr, "serviceName", serviceName, "err", err)
 			return err
 		}
-		defer conn.Close()
-		c := NewHealthCheckServiceClient(conn)
-		_, err = c.Readiness(ctx, nil)
-		return err
+		conn.Close()
+		return nil
 	}
 }

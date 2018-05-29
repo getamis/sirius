@@ -41,6 +41,7 @@ func NewServer(opts ...ServerOption) *Server {
 }
 
 // API provides APIs for specific gRPC server
+//go:generate mockery -name API
 type API interface {
 	Bind(server *grpc.Server)
 }
@@ -64,6 +65,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) Shutdown() {
 	s.grpcServer.GracefulStop()
+
+	type handler interface {
+		Shutdown()
+	}
+
+	for _, api := range s.apis {
+		h, ok := api.(handler)
+		if ok {
+			h.Shutdown()
+		}
+	}
 }
 
 // ----------------------------------------------------------------------------

@@ -118,10 +118,10 @@
   version = "v0.3.2"
 
 [[projects]]
-  branch = "master"
   name = "github.com/fsouza/go-dockerclient"
   packages = ["."]
-  revision = "5ffdfff51ec0eba739b1039e65ba3625ef25f7c0"
+  revision = "ca33ff277b527ce11b793e62f9ba244129b01caf"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/go-sql-driver/mysql"
@@ -496,6 +496,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7c1e77d96c472ebbd1f6c5cefe1b38e6d8a6d745053770128042081eb5e7b5f3"
+  inputs-digest = "31d48a11f2939ec661d4776d50173c93859ab3b5e4b60f67241e6e68fb9b858b"
   solver-name = "gps-cdcl"
   solver-version = 1

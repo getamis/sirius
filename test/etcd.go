@@ -60,7 +60,7 @@ func NewEtcdContainer() (*Etcdcontainer, error) {
 		dockerContainer: NewDockerContainer(
 			ImageRepository("quay.io/coreos/etcd"),
 			ImageTag("v3.0.6"),
-			Port(port),
+			Ports(port),
 			RunOptions(
 				[]string{
 					"etcd", "-name", "etcd-test",

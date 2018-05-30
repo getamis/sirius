@@ -56,7 +56,7 @@ func NewRedisContainer() (*RedisContainer, error) {
 		container: NewDockerContainer(
 			ImageRepository("redis"),
 			ImageTag("3-alpine"),
-			Port(port),
+			Ports(port),
 			HealthChecker(checker),
 		),
 	}

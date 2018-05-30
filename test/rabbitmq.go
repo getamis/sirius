@@ -40,6 +40,7 @@ func (container *RabbitMQContainer) Stop() error {
 
 func NewRabbitMQContainer() (*RabbitMQContainer, error) {
 	port := 5672
+	guiPort := 15672
 	endpoint := fmt.Sprintf("amqp://guest:guest@127.0.0.1:%d", port)
 	checker := func(c *Container) error {
 		return retry(10, 5*time.Second, func() error {
@@ -52,7 +53,7 @@ func NewRabbitMQContainer() (*RabbitMQContainer, error) {
 		dockerContainer: NewDockerContainer(
 			ImageRepository("rabbitmq"),
 			ImageTag("3.6.2-management"),
-			Port(port),
+			Ports(port, guiPort),
 			HealthChecker(checker),
 		),
 	}

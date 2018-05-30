@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/getamis/sirius/database/mysql"
+	"github.com/getamis/sirius/log"
 )
 
 type MySQLContainer struct {
@@ -39,7 +40,7 @@ func (container *MySQLContainer) Stop() error {
 	return container.dockerContainer.Stop()
 }
 
-func NewMySQLContainer() (*MySQLContainer, error) {
+func NewMySQLContainer(migrationRepository string) (*MySQLContainer, error) {
 	port := 3306
 	password := "my-secret-pw"
 	database := "db0"
@@ -56,17 +57,14 @@ func NewMySQLContainer() (*MySQLContainer, error) {
 			}
 			defer db.Close()
 			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		})
 	}
 	container := &MySQLContainer{
 		dockerContainer: NewDockerContainer(
 			ImageRepository("mysql"),
 			ImageTag("5.7"),
-			Port(port),
+			Ports(port),
 			DockerEnv(
 				[]string{
 					fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", password),
@@ -74,6 +72,47 @@ func NewMySQLContainer() (*MySQLContainer, error) {
 				},
 			),
 			HealthChecker(checker),
+			Initializer(func(c *Container) error {
+				inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
+				if err != nil {
+					return err
+				}
+				if migrationRepository == "" {
+					return nil
+				}
+
+				migrationContainer := NewDockerContainer(
+					ImageRepository(migrationRepository),
+					ImageTag("latest"),
+					DockerEnv(
+						[]string{
+							"RAILS_ENV=customized",
+							fmt.Sprintf("HOST=%s", inspectedContainer.NetworkSettings.IPAddress),
+							fmt.Sprintf("PORT=%d", port),
+							fmt.Sprintf("DATABASE=%s", database),
+							"USERNAME=root",
+							fmt.Sprintf("PASSWORD=%s", password),
+						},
+					),
+					RunOptions(
+						[]string{
+							"bundle", "exec", "rake", "db:migrate",
+						},
+					),
+				)
+
+				if err := migrationContainer.Start(); err != nil {
+					log.Error("Failed to start container", "err", err)
+					return err
+				}
+
+				if err := migrationContainer.Wait(); err != nil {
+					log.Error("Failed to wait container", "err", err)
+					return err
+				}
+
+				return migrationContainer.Stop()
+			}),
 		),
 	}
 

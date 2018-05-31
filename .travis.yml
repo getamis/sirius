@@ -13,6 +13,7 @@ addons:
 
 before_script:
   - sudo service mysql stop
+  - docker pull mysql:5.7
 
 branches:
   only:

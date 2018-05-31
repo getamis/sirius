@@ -36,9 +36,13 @@ func ImageTag(tag string) Option {
 	}
 }
 
-func Port(port int) Option {
+func Ports(ports ...int) Option {
 	return func(c *Container) {
-		c.port = fmt.Sprintf("%d", port)
+		var p []string
+		for _, port := range ports {
+			p = append(p, fmt.Sprintf("%d", port))
+		}
+		c.ports = p
 	}
 }
 

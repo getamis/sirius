@@ -18,10 +18,9 @@ import (
 	"context"
 	"os"
 
-	"github.com/fsouza/go-dockerclient"
-	"github.com/prometheus/common/log"
-
+	docker "github.com/fsouza/go-dockerclient"
 	"github.com/getamis/sirius/crypto/rand"
+	"github.com/getamis/sirius/log"
 )
 
 type Container struct {
@@ -29,7 +28,7 @@ type Container struct {
 	name             string
 	imageRespository string
 	imageTag         string
-	port             string
+	ports            []string
 	runArgs          []string
 	envs             []string
 	container        *docker.Container
@@ -54,26 +53,19 @@ func NewDockerContainer(opts ...Option) *Container {
 	portBindings := make(map[docker.Port][]docker.PortBinding)
 	exposedPorts := make(map[docker.Port]struct{})
 
-	if c.port != "" {
-		portBindings[docker.Port(c.port)] = []docker.PortBinding{
-			docker.PortBinding{
-				HostIP:   "0.0.0.0",
-				HostPort: c.port,
-			},
+	if len(c.ports) != 0 {
+		for _, port := range c.ports {
+			portBindings[docker.Port(port)] = []docker.PortBinding{
+				{
+					HostIP:   "0.0.0.0",
+					HostPort: port,
+				},
+			}
+			exposedPorts[docker.Port(port)] = struct{}{}
 		}
-		exposedPorts[docker.Port(c.port)] = struct{}{}
 	}
 
-	err := c.dockerClient.PullImage(docker.PullImageOptions{
-		Repository: c.imageRespository,
-		Tag:        c.imageTag,
-		Context:    context.TODO(),
-	}, docker.AuthConfiguration{})
-	if err != nil {
-		log.Error(err)
-		return nil
-	}
-
+	var err error
 	c.container, err = c.dockerClient.CreateContainer(docker.CreateContainerOptions{
 		Name: c.name + generateNameSuffix(),
 		Config: &docker.Config{
@@ -88,7 +80,7 @@ func NewDockerContainer(opts ...Option) *Container {
 		Context: context.TODO(),
 	})
 	if err != nil {
-		log.Error(err)
+		log.Error("Failed to create a container", "repository", c.imageRespository, "tag", c.imageTag, "err", err)
 		return nil
 	}
 

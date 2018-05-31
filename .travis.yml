@@ -14,6 +14,9 @@ addons:
 before_script:
   - sudo service mysql stop
   - docker pull mysql:5.7
+  - docker pull quay.io/coreos/etcd:v3.0.6
+  - docker pull rabbitmq:3.6.2-management
+  - docker pull redis:3-alpine
 
 branches:
   only:

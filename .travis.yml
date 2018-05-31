@@ -20,14 +20,3 @@ script:
 branches:
   only:
     - develop
-
-jobs:
-  include:
-    - stage: Release
-      if: tag =~ ^v
-      env: REV="$TRAVIS_TAG"
-      deploy:
-        provider: releases
-        skip_cleanup: true
-        on:
-          tags: true

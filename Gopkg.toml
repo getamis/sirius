@@ -106,3 +106,7 @@
     name = "github.com/grpc-ecosystem/grpc-gateway"
     non-go = false
     unused-packages = false
+
+[[constraint]]
+  name = "github.com/grpc-ecosystem/go-grpc-middleware"
+  version = "1.0.0"

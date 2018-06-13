@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/getamis/sirius/metrics"
+	"github.com/grpc-ecosystem/go-grpc-middleware"
 )
 
 // NewServer creates a gRPC server with pre-configured services
@@ -48,9 +49,11 @@ type API interface {
 
 // Server represents a gRPC server
 type Server struct {
-	grpcServer  *grpc.Server
-	credentials *tls.Config
-	grpcMetrics metrics.ServerMetrics
+	grpcServer         *grpc.Server
+	credentials        *tls.Config
+	grpcMetrics        metrics.ServerMetrics
+	streamInterceptors []grpc.StreamServerInterceptor
+	unaryInterceptors  []grpc.UnaryServerInterceptor
 
 	apis []API
 }
@@ -89,11 +92,21 @@ func (s *Server) createGRPCServer() {
 		options = append(options, grpc.Creds(tls))
 	}
 
+	var streamInterceptors []grpc.StreamServerInterceptor
+	var unaryInterceptors []grpc.UnaryServerInterceptor
+
 	// metrics
 	if s.grpcMetrics != nil {
-		options = append(options, grpc.StreamInterceptor(s.grpcMetrics.StreamServerInterceptor()))
-		options = append(options, grpc.UnaryInterceptor(s.grpcMetrics.UnaryServerInterceptor()))
+		streamInterceptors = append(streamInterceptors, s.grpcMetrics.StreamServerInterceptor())
+		unaryInterceptors = append(unaryInterceptors, s.grpcMetrics.UnaryServerInterceptor())
 	}
+
+	streamInterceptors = append(streamInterceptors, s.streamInterceptors...)
+	unaryInterceptors = append(unaryInterceptors, s.unaryInterceptors...)
+
+	// chain interceptors
+	options = append(options, grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streamInterceptors...)))
+	options = append(options, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)))
 
 	s.grpcServer = grpc.NewServer(options...)
 }

@@ -18,6 +18,7 @@ import (
 	"crypto/tls"
 
 	"github.com/getamis/sirius/metrics"
+	"google.golang.org/grpc"
 )
 
 type ServerOption func(*Server)
@@ -39,5 +40,17 @@ func Credentials(credentials *tls.Config) ServerOption {
 func Metrics(metrics metrics.ServerMetrics) ServerOption {
 	return func(s *Server) {
 		s.grpcMetrics = metrics
+	}
+}
+
+func StreamInterceptors(interceptors ...grpc.StreamServerInterceptor) ServerOption {
+	return func(s *Server) {
+		s.streamInterceptors = interceptors
+	}
+}
+
+func UnaryInterceptors(interceptors ...grpc.UnaryServerInterceptor) ServerOption {
+	return func(s *Server) {
+		s.unaryInterceptors = interceptors
 	}
 }

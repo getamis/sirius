@@ -12,3 +12,14 @@
 
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
+
+# Build directory
+build/
+
+# Code coverage
+coverage.txt
+profile.out
+
+# IntelliJ
+*.iml
+.idea

@@ -1,0 +1,36 @@
+language: go
+
+go:
+  - "1.10"
+
+services:
+  - docker
+
+addons:
+  apt:
+    packages:
+      - docker-ce
+
+before_script:
+  - sudo service mysql stop
+  - docker pull mysql:5.7
+  - docker pull quay.io/coreos/etcd:v3.0.6
+  - docker pull rabbitmq:3.6.2-management
+  - docker pull redis:3-alpine
+
+branches:
+  only:
+    - develop
+
+jobs:
+  include:
+    - stage: Unit Test
+      script: make test
+    - stage: Release
+      if: tag =~ ^v
+      env: REV="$TRAVIS_TAG"
+      deploy:
+        provider: releases
+        skip_cleanup: true
+        on:
+          tags: true

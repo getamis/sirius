@@ -1,10 +1,7 @@
 package genswagger
 
 import (
-	"bytes"
-	"encoding/json"
-
-	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
+	"github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
 )
 
 type param struct {
@@ -23,8 +20,9 @@ type swaggerInfoObject struct {
 	TermsOfService string `json:"termsOfService,omitempty"`
 	Version        string `json:"version"`
 
-	Contact *swaggerContactObject `json:"contact,omitempty"`
-	License *swaggerLicenseObject `json:"license,omitempty"`
+	Contact      *swaggerContactObject               `json:"contact,omitempty"`
+	License      *swaggerLicenseObject               `json:"license,omitempty"`
+	ExternalDocs *swaggerExternalDocumentationObject `json:"externalDocs,omitempty"`
 }
 
 // http://swagger.io/specification/#contactObject
@@ -48,16 +46,15 @@ type swaggerExternalDocumentationObject struct {
 
 // http://swagger.io/specification/#swaggerObject
 type swaggerObject struct {
-	Swagger      string                              `json:"swagger"`
-	Info         swaggerInfoObject                   `json:"info"`
-	Host         string                              `json:"host,omitempty"`
-	BasePath     string                              `json:"basePath,omitempty"`
-	Schemes      []string                            `json:"schemes"`
-	Consumes     []string                            `json:"consumes"`
-	Produces     []string                            `json:"produces"`
-	Paths        swaggerPathsObject                  `json:"paths"`
-	Definitions  swaggerDefinitionsObject            `json:"definitions"`
-	ExternalDocs *swaggerExternalDocumentationObject `json:"externalDocs,omitempty"`
+	Swagger     string                   `json:"swagger"`
+	Info        swaggerInfoObject        `json:"info"`
+	Host        string                   `json:"host,omitempty"`
+	BasePath    string                   `json:"basePath,omitempty"`
+	Schemes     []string                 `json:"schemes"`
+	Consumes    []string                 `json:"consumes"`
+	Produces    []string                 `json:"produces"`
+	Paths       swaggerPathsObject       `json:"paths"`
+	Definitions swaggerDefinitionsObject `json:"definitions"`
 }
 
 // http://swagger.io/specification/#pathsObject
@@ -69,7 +66,6 @@ type swaggerPathItemObject struct {
 	Delete *swaggerOperationObject `json:"delete,omitempty"`
 	Post   *swaggerOperationObject `json:"post,omitempty"`
 	Put    *swaggerOperationObject `json:"put,omitempty"`
-	Patch  *swaggerOperationObject `json:"patch,omitempty"`
 }
 
 // http://swagger.io/specification/#operationObject
@@ -80,7 +76,6 @@ type swaggerOperationObject struct {
 	Responses   swaggerResponsesObject  `json:"responses"`
 	Parameters  swaggerParametersObject `json:"parameters,omitempty"`
 	Tags        []string                `json:"tags,omitempty"`
-	Deprecated  bool                    `json:"deprecated,omitempty"`
 
 	ExternalDocs *swaggerExternalDocumentationObject `json:"externalDocs,omitempty"`
 }
@@ -96,8 +91,6 @@ type swaggerParameterObject struct {
 	Type        string              `json:"type,omitempty"`
 	Format      string              `json:"format,omitempty"`
 	Items       *swaggerItemsObject `json:"items,omitempty"`
-	Enum        []string            `json:"enum,omitempty"`
-	Default     string              `json:"default,omitempty"`
 
 	// Or you can explicitly refer to another type. If this is defined all
 	// other fields should be empty
@@ -110,24 +103,9 @@ type schemaCore struct {
 	Type   string `json:"type,omitempty"`
 	Format string `json:"format,omitempty"`
 	Ref    string `json:"$ref,omitempty"`
-
-	Items *swaggerItemsObject `json:"items,omitempty"`
-
-	// If the item is an enumeration include a list of all the *NAMES* of the
-	// enum values.  I'm not sure how well this will work but assuming all enums
-	// start from 0 index it will be great. I don't think that is a good assumption.
-	Enum    []string `json:"enum,omitempty"`
-	Default string   `json:"default,omitempty"`
 }
 
 type swaggerItemsObject schemaCore
-
-func (o *swaggerItemsObject) getType() string {
-	if o == nil {
-		return ""
-	}
-	return o.Type
-}
 
 // http://swagger.io/specification/#responsesObject
 type swaggerResponsesObject map[string]swaggerResponseObject
@@ -138,48 +116,22 @@ type swaggerResponseObject struct {
 	Schema      swaggerSchemaObject `json:"schema"`
 }
 
-type keyVal struct {
-	Key   string
-	Value interface{}
-}
-
-type swaggerSchemaObjectProperties []keyVal
-
-func (op swaggerSchemaObjectProperties) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	buf.WriteString("{")
-	for i, kv := range op {
-		if i != 0 {
-			buf.WriteString(",")
-		}
-		key, err := json.Marshal(kv.Key)
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(key)
-		buf.WriteString(":")
-		val, err := json.Marshal(kv.Value)
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(val)
-	}
-
-	buf.WriteString("}")
-	return buf.Bytes(), nil
-}
-
 // http://swagger.io/specification/#schemaObject
 type swaggerSchemaObject struct {
 	schemaCore
 	// Properties can be recursively defined
-	Properties           swaggerSchemaObjectProperties `json:"properties,omitempty"`
-	AdditionalProperties *swaggerSchemaObject          `json:"additionalProperties,omitempty"`
+	Properties           map[string]swaggerSchemaObject `json:"properties,omitempty"`
+	AdditionalProperties *swaggerSchemaObject           `json:"additionalProperties,omitempty"`
+	Items                *swaggerItemsObject            `json:"items,omitempty"`
+
+	// If the item is an enumeration include a list of all the *NAMES* of the
+	// enum values.  I'm not sure how well this will work but assuming all enums
+	// start from 0 index it will be great. I don't think that is a good assumption.
+	Enum    []string `json:"enum,omitempty"`
+	Default string   `json:"default,omitempty"`
 
 	Description string `json:"description,omitempty"`
 	Title       string `json:"title,omitempty"`
-
-	ExternalDocs *swaggerExternalDocumentationObject `json:"externalDocs,omitempty"`
 }
 
 // http://swagger.io/specification/#referenceObject
@@ -197,6 +149,3 @@ type messageMap map[string]*descriptor.Message
 // Internal type mapping from FQEN to descriptor.Enum. Used as a set by the
 // findServiceMessages function.
 type enumMap map[string]*descriptor.Enum
-
-// Internal type to store used references.
-type refMap map[string]struct{}

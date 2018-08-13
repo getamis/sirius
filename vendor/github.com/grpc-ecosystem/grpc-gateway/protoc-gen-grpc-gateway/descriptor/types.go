@@ -4,16 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway/httprule"
 	descriptor "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	gogen "github.com/golang/protobuf/protoc-gen-go/generator"
-	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/httprule"
 )
-
-// IsWellKnownType returns true if the provided fully qualified type name is considered 'well-known'.
-func IsWellKnownType(typeName string) bool {
-	_, ok := wellKnownTypeConv[typeName]
-	return ok
-}
 
 // GoPackage represents a golang package
 type GoPackage struct {
@@ -201,9 +195,6 @@ func (p Parameter) ConvertFuncExpr() (string, error) {
 	typ := p.Target.GetType()
 	conv, ok := tbl[typ]
 	if !ok {
-		conv, ok = wellKnownTypeConv[p.Target.GetTypeName()]
-	}
-	if !ok {
 		return "", fmt.Errorf("unsupported field type %s of parameter %s in %s.%s", typ, p.FieldPath, p.Method.Service.GetName(), p.Method.GetName())
 	}
 	return conv, nil
@@ -295,7 +286,8 @@ var (
 		descriptor.FieldDescriptorProto_TYPE_STRING:  "runtime.String",
 		// FieldDescriptorProto_TYPE_GROUP
 		// FieldDescriptorProto_TYPE_MESSAGE
-		descriptor.FieldDescriptorProto_TYPE_BYTES:  "runtime.Bytes",
+		// FieldDescriptorProto_TYPE_BYTES
+		// TODO(yugui) Handle bytes
 		descriptor.FieldDescriptorProto_TYPE_UINT32: "runtime.Uint32",
 		// FieldDescriptorProto_TYPE_ENUM
 		// TODO(yugui) Handle Enum
@@ -326,10 +318,5 @@ var (
 		descriptor.FieldDescriptorProto_TYPE_SFIXED64: "runtime.Int64P",
 		descriptor.FieldDescriptorProto_TYPE_SINT32:   "runtime.Int32P",
 		descriptor.FieldDescriptorProto_TYPE_SINT64:   "runtime.Int64P",
-	}
-
-	wellKnownTypeConv = map[string]string{
-		".google.protobuf.Timestamp": "runtime.Timestamp",
-		".google.protobuf.Duration":  "runtime.Duration",
 	}
 )

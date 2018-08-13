@@ -15,18 +15,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
+	"github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway/gengateway"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
-	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
-	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/gengateway"
 )
 
 var (
-	importPrefix      = flag.String("import_prefix", "", "prefix to be added to go package paths for imported proto files")
-	importPath        = flag.String("import_path", "", "used as the package if no input files declare go_package. If it contains slashes, everything up to the rightmost slash is ignored.")
-	useRequestContext = flag.Bool("request_context", true, "determine whether to use http.Request's context or not")
-	allowDeleteBody   = flag.Bool("allow_delete_body", false, "unless set, HTTP DELETE methods may not have a body")
+	importPrefix = flag.String("import_prefix", "", "prefix to be added to go package paths for imported proto files")
 )
 
 func parseReq(r io.Reader) (*plugin.CodeGeneratorRequest, error) {
@@ -76,11 +73,9 @@ func main() {
 		}
 	}
 
-	g := gengateway.New(reg, *useRequestContext)
+	g := gengateway.New(reg)
 
 	reg.SetPrefix(*importPrefix)
-	reg.SetImportPath(*importPath)
-	reg.SetAllowDeleteBody(*allowDeleteBody)
 	if err := reg.Load(req); err != nil {
 		emitError(err)
 		return

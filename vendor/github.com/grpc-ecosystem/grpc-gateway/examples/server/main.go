@@ -1,9 +1,11 @@
-package server
+package main
 
 import (
+	"flag"
 	"net"
 
-	examples "github.com/grpc-ecosystem/grpc-gateway/examples/examplepb"
+	examples "github.com/gengo/grpc-gateway/examples/examplepb"
+	"github.com/golang/glog"
 	"google.golang.org/grpc"
 )
 
@@ -22,4 +24,13 @@ func Run() error {
 
 	s.Serve(l)
 	return nil
+}
+
+func main() {
+	flag.Parse()
+	defer glog.Flush()
+
+	if err := Run(); err != nil {
+		glog.Fatal(err)
+	}
 }

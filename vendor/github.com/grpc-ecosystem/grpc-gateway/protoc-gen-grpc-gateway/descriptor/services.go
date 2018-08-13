@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway/httprule"
+	options "github.com/gengo/grpc-gateway/third_party/googleapis/google/api"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	descriptor "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/httprule"
-	options "google.golang.org/genproto/googleapis/api/annotations"
 )
 
 // loadServices registers services and their methods from "targetFile" to "r".
@@ -31,7 +31,8 @@ func (r *Registry) loadServices(file *File) error {
 				return err
 			}
 			if opts == nil {
-				glog.V(1).Infof("Found non-target method: %s.%s", svc.GetName(), md.GetName())
+				glog.V(1).Infof("Skip non-target method: %s.%s", svc.GetName(), md.GetName())
+				continue
 			}
 			meth, err := r.newMethod(svc, md, opts)
 			if err != nil {
@@ -75,7 +76,7 @@ func (r *Registry) newMethod(svc *Service, md *descriptor.MethodDescriptorProto,
 			httpMethod = "GET"
 			pathTemplate = opts.GetGet()
 			if opts.Body != "" {
-				return nil, fmt.Errorf("must not set request body when http method is GET: %s", md.GetName())
+				return nil, fmt.Errorf("needs request body even though http method is GET: %s", md.GetName())
 			}
 
 		case opts.GetPut() != "":
@@ -89,8 +90,8 @@ func (r *Registry) newMethod(svc *Service, md *descriptor.MethodDescriptorProto,
 		case opts.GetDelete() != "":
 			httpMethod = "DELETE"
 			pathTemplate = opts.GetDelete()
-			if opts.Body != "" && !r.allowDeleteBody {
-				return nil, fmt.Errorf("must not set request body when http method is DELETE except allow_delete_body option is true: %s", md.GetName())
+			if opts.Body != "" {
+				return nil, fmt.Errorf("needs request body even though http method is DELETE: %s", md.GetName())
 			}
 
 		case opts.GetPatch() != "":
@@ -103,8 +104,8 @@ func (r *Registry) newMethod(svc *Service, md *descriptor.MethodDescriptorProto,
 			pathTemplate = custom.Path
 
 		default:
-			glog.V(1).Infof("No pattern specified in google.api.HttpRule: %s", md.GetName())
-			return nil, nil
+			glog.Errorf("No pattern specified in google.api.HttpRule: %s", md.GetName())
+			return nil, fmt.Errorf("none of pattern specified")
 		}
 
 		parsed, err := httprule.Parse(pathTemplate)
@@ -146,9 +147,7 @@ func (r *Registry) newMethod(svc *Service, md *descriptor.MethodDescriptorProto,
 		return nil, err
 	}
 
-	if b != nil {
-		meth.Bindings = append(meth.Bindings, b)
-	}
+	meth.Bindings = append(meth.Bindings, b)
 	for i, additional := range opts.GetAdditionalBindings() {
 		if len(additional.AdditionalBindings) > 0 {
 			return nil, fmt.Errorf("additional_binding in additional_binding not allowed: %s.%s", svc.GetName(), meth.GetName())
@@ -194,12 +193,7 @@ func (r *Registry) newParam(meth *Method, path string) (Parameter, error) {
 	target := fields[l-1].Target
 	switch target.GetType() {
 	case descriptor.FieldDescriptorProto_TYPE_MESSAGE, descriptor.FieldDescriptorProto_TYPE_GROUP:
-		glog.V(2).Infoln("found aggregate type:", target, target.TypeName)
-		if IsWellKnownType(*target.TypeName) {
-			glog.V(2).Infoln("found well known aggregate type:", target)
-		} else {
-			return Parameter{}, fmt.Errorf("aggregate type %s in parameter of %s.%s: %s", target.Type, meth.Service.GetName(), meth.GetName(), path)
-		}
+		return Parameter{}, fmt.Errorf("aggregate type %s in parameter of %s.%s: %s", target.Type, meth.Service.GetName(), meth.GetName(), path)
 	}
 	return Parameter{
 		FieldPath: FieldPath(fields),

@@ -5,7 +5,7 @@ option go_package = "examplepb";
 //
 // Echo Service API consists of a single service which returns
 // a message.
-package grpc.gateway.examples.examplepb;
+package gengo.grpc.gateway.examples.examplepb;
 
 import "google/api/annotations.proto";
 
@@ -13,7 +13,6 @@ import "google/api/annotations.proto";
 message SimpleMessage {
 	// Id represents the message identifier.
 	string id = 1;
-	int64 num = 2;
 }
 
 // Echo service responds to incoming echo requests.
@@ -25,9 +24,6 @@ service EchoService {
 	rpc Echo(SimpleMessage) returns (SimpleMessage) {
 		option (google.api.http) = {
 			post: "/v1/example/echo/{id}"
-			additional_bindings {
-				get: "/v1/example/echo/{id}/{num}"
-			}
 		};
 	}
 	// EchoBody method receives a simple message and returns it.

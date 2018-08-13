@@ -37,13 +37,13 @@ func splitMethodName(fullMethodName string) (string, string) {
 }
 
 func typeFromMethodInfo(mInfo *grpc.MethodInfo) grpcType {
-	if !mInfo.IsClientStream && !mInfo.IsServerStream {
+	if mInfo.IsClientStream == false && mInfo.IsServerStream == false {
 		return Unary
 	}
-	if mInfo.IsClientStream && !mInfo.IsServerStream {
+	if mInfo.IsClientStream == true && mInfo.IsServerStream == false {
 		return ClientStream
 	}
-	if !mInfo.IsClientStream && mInfo.IsServerStream {
+	if mInfo.IsClientStream == false && mInfo.IsServerStream == true {
 		return ServerStream
 	}
 	return BidiStream

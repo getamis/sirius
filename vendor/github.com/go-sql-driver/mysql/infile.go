@@ -147,8 +147,7 @@ func (mc *mysqlConn) handleInFileRequest(name string) (err error) {
 	}
 
 	// send content packets
-	// if packetSize == 0, the Reader contains no data
-	if err == nil && packetSize > 0 {
+	if err == nil {
 		data := make([]byte, 4+packetSize)
 		var n int
 		for err == nil {
@@ -174,7 +173,8 @@ func (mc *mysqlConn) handleInFileRequest(name string) (err error) {
 
 	// read OK packet
 	if err == nil {
-		return mc.readResultOK()
+		_, err = mc.readResultOK()
+		return err
 	}
 
 	mc.readPacket()

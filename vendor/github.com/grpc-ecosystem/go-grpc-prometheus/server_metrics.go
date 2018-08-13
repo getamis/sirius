@@ -4,7 +4,6 @@ import (
 	prom "github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/status"
 )
 
 // ServerMetrics represents a collection of metrics to be registered on a
@@ -105,8 +104,7 @@ func (m *ServerMetrics) UnaryServerInterceptor() func(ctx context.Context, req i
 		monitor := newServerReporter(m, Unary, info.FullMethod)
 		monitor.ReceivedMessage()
 		resp, err := handler(ctx, req)
-		st, _ := status.FromError(err)
-		monitor.Handled(st.Code())
+		monitor.Handled(grpc.Code(err))
 		if err == nil {
 			monitor.SentMessage()
 		}
@@ -117,10 +115,9 @@ func (m *ServerMetrics) UnaryServerInterceptor() func(ctx context.Context, req i
 // StreamServerInterceptor is a gRPC server-side interceptor that provides Prometheus monitoring for Streaming RPCs.
 func (m *ServerMetrics) StreamServerInterceptor() func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		monitor := newServerReporter(m, streamRPCType(info), info.FullMethod)
+		monitor := newServerReporter(m, streamRpcType(info), info.FullMethod)
 		err := handler(srv, &monitoredServerStream{ss, monitor})
-		st, _ := status.FromError(err)
-		monitor.Handled(st.Code())
+		monitor.Handled(grpc.Code(err))
 		return err
 	}
 }
@@ -137,7 +134,27 @@ func (m *ServerMetrics) InitializeMetrics(server *grpc.Server) {
 	}
 }
 
-func streamRPCType(info *grpc.StreamServerInfo) grpcType {
+// Register registers all server metrics in a given metrics registry. Depending
+// on histogram options and whether they are enabled, histogram metrics are
+// also registered.
+//
+// Deprecated: ServerMetrics implements Prometheus Collector interface. You can
+// register an instance of ServerMetrics directly by using
+// prometheus.Register(m).
+func (m *ServerMetrics) Register(r prom.Registerer) error {
+	return r.Register(m)
+}
+
+// MustRegister tries to register all server metrics and panics on an error.
+//
+// Deprecated: ServerMetrics implements Prometheus Collector interface. You can
+// register an instance of ServerMetrics directly by using
+// prometheus.MustRegister(m).
+func (m *ServerMetrics) MustRegister(r prom.Registerer) {
+	r.MustRegister(m)
+}
+
+func streamRpcType(info *grpc.StreamServerInfo) grpcType {
 	if info.IsClientStream && !info.IsServerStream {
 		return ClientStream
 	} else if !info.IsClientStream && info.IsServerStream {

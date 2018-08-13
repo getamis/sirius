@@ -1,9 +1,9 @@
-package main
+package server
 
 import (
 	"io"
 
-	examples "github.com/gengo/grpc-gateway/examples/examplepb"
+	examples "github.com/grpc-ecosystem/grpc-gateway/examples/examplepb"
 	"golang.org/x/net/context"
 )
 

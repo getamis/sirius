@@ -8,11 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
-	gen "github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway/generator"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
+	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
+	gen "github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/generator"
+	options "google.golang.org/genproto/googleapis/api/annotations"
 )
 
 var (
@@ -20,23 +21,25 @@ var (
 )
 
 type generator struct {
-	reg         *descriptor.Registry
-	baseImports []descriptor.GoPackage
+	reg               *descriptor.Registry
+	baseImports       []descriptor.GoPackage
+	useRequestContext bool
 }
 
 // New returns a new generator which generates grpc gateway files.
-func New(reg *descriptor.Registry) gen.Generator {
+func New(reg *descriptor.Registry, useRequestContext bool) gen.Generator {
 	var imports []descriptor.GoPackage
 	for _, pkgpath := range []string{
 		"io",
 		"net/http",
-		"github.com/gengo/grpc-gateway/runtime",
-		"github.com/gengo/grpc-gateway/utilities",
+		"github.com/grpc-ecosystem/grpc-gateway/runtime",
+		"github.com/grpc-ecosystem/grpc-gateway/utilities",
 		"github.com/golang/protobuf/proto",
 		"golang.org/x/net/context",
 		"google.golang.org/grpc",
 		"google.golang.org/grpc/codes",
 		"google.golang.org/grpc/grpclog",
+		"google.golang.org/grpc/status",
 	} {
 		pkg := descriptor.GoPackage{
 			Path: pkgpath,
@@ -54,7 +57,7 @@ func New(reg *descriptor.Registry) gen.Generator {
 		}
 		imports = append(imports, pkg)
 	}
-	return &generator{reg: reg, baseImports: imports}
+	return &generator{reg: reg, baseImports: imports, useRequestContext: useRequestContext}
 }
 
 func (g *generator) Generate(targets []*descriptor.File) ([]*plugin.CodeGeneratorResponse_File, error) {
@@ -75,6 +78,9 @@ func (g *generator) Generate(targets []*descriptor.File) ([]*plugin.CodeGenerato
 			return nil, err
 		}
 		name := file.GetName()
+		if file.GoPkg.Path != "" {
+			name = fmt.Sprintf("%s/%s", file.GoPkg.Path, filepath.Base(name))
+		}
 		ext := filepath.Ext(name)
 		base := strings.TrimSuffix(name, ext)
 		output := fmt.Sprintf("%s.pb.gw.go", base)
@@ -97,15 +103,13 @@ func (g *generator) generate(file *descriptor.File) (string, error) {
 	for _, svc := range file.Services {
 		for _, m := range svc.Methods {
 			pkg := m.RequestType.File.GoPkg
-			if pkg == file.GoPkg {
-				continue
-			}
-			if pkgSeen[pkg.Path] {
+			if m.Options == nil || !proto.HasExtension(m.Options, options.E_Http) ||
+				pkg == file.GoPkg || pkgSeen[pkg.Path] {
 				continue
 			}
 			pkgSeen[pkg.Path] = true
 			imports = append(imports, pkg)
 		}
 	}
-	return applyTemplate(param{File: file, Imports: imports})
+	return applyTemplate(param{File: file, Imports: imports, UseRequestContext: g.useRequestContext})
 }

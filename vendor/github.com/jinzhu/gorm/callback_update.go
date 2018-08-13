@@ -1,9 +1,7 @@
 package gorm
 
 import (
-	"errors"
 	"fmt"
-	"sort"
 	"strings"
 )
 
@@ -33,10 +31,6 @@ func assignUpdatingAttributesCallback(scope *Scope) {
 
 // beforeUpdateCallback will invoke `BeforeSave`, `BeforeUpdate` method before updating
 func beforeUpdateCallback(scope *Scope) {
-	if scope.DB().HasBlockGlobalUpdate() && !scope.hasConditions() {
-		scope.Err(errors.New("Missing WHERE clause while updating"))
-		return
-	}
 	if _, ok := scope.Get("gorm:update_column"); !ok {
 		if !scope.HasError() {
 			scope.CallMethod("BeforeSave")
@@ -60,16 +54,7 @@ func updateCallback(scope *Scope) {
 		var sqls []string
 
 		if updateAttrs, ok := scope.InstanceGet("gorm:update_attrs"); ok {
-			// Sort the column names so that the generated SQL is the same every time.
-			updateMap := updateAttrs.(map[string]interface{})
-			var columns []string
-			for c := range updateMap {
-				columns = append(columns, c)
-			}
-			sort.Strings(columns)
-
-			for _, column := range columns {
-				value := updateMap[column]
+			for column, value := range updateAttrs.(map[string]interface{}) {
 				sqls = append(sqls, fmt.Sprintf("%v = %v", scope.Quote(column), scope.AddToVars(value)))
 			}
 		} else {

@@ -195,25 +195,10 @@ func (eventState *eventMonitoringState) disableEventMonitoring() error {
 }
 
 func (eventState *eventMonitoringState) monitorEvents(c *Client) {
-	const (
-		noListenersTimeout  = 5 * time.Second
-		noListenersInterval = 10 * time.Millisecond
-		noListenersMaxTries = noListenersTimeout / noListenersInterval
-	)
-
 	var err error
-	for i := time.Duration(0); i < noListenersMaxTries && eventState.noListeners(); i++ {
+	for eventState.noListeners() {
 		time.Sleep(10 * time.Millisecond)
 	}
-
-	if eventState.noListeners() {
-		// terminate if no listener is available after 5 seconds.
-		// Prevents goroutine leak when RemoveEventListener is called
-		// right after AddEventListener.
-		eventState.disableEventMonitoring()
-		return
-	}
-
 	if err = eventState.connectWithRetry(c); err != nil {
 		// terminate if connect failed
 		eventState.disableEventMonitoring()

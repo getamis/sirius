@@ -26,9 +26,6 @@ import (
 	"google.golang.org/grpc/resolver"
 )
 
-// PickFirstBalancerName is the name of the pick_first balancer.
-const PickFirstBalancerName = "pick_first"
-
 func newPickfirstBuilder() balancer.Builder {
 	return &pickfirstBuilder{}
 }
@@ -40,7 +37,7 @@ func (*pickfirstBuilder) Build(cc balancer.ClientConn, opt balancer.BuildOptions
 }
 
 func (*pickfirstBuilder) Name() string {
-	return PickFirstBalancerName
+	return "pick_first"
 }
 
 type pickfirstBalancer struct {

@@ -20,7 +20,6 @@ import (
 	"net/http"
 
 	"github.com/getamis/sirius/log"
-	"github.com/getamis/sirius/rpc/pb"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/urfave/negroni"
 )
@@ -28,15 +27,14 @@ import (
 // NewProxy creates a RESTful proxy server that routes RESTful request to gRPC server
 func NewProxy(opts ...ProxyOption) *proxy {
 	p := &proxy{
-		server: runtime.NewServeMux(
-			runtime.WithMarshalerOption(runtime.MIMEWildcard, new(pb.JSONPb)),
-		),
 		router: negroni.New(),
 	}
 
 	for _, opt := range opts {
 		opt(p)
 	}
+
+	p.server = runtime.NewServeMux(p.serverMuxOption...)
 
 	if err := p.registerAPIs(); err != nil {
 		log.Error("Failed to register API", "err", err)
@@ -53,11 +51,12 @@ type Proxy interface {
 
 // Server represents a gRPC server
 type proxy struct {
-	middlewares []Middleware
-	router      *negroni.Negroni
-	server      *runtime.ServeMux
-	httpServer  *http.Server
-	apis        []Proxy
+	middlewares     []Middleware
+	router          *negroni.Negroni
+	server          *runtime.ServeMux
+	httpServer      *http.Server
+	apis            []Proxy
+	serverMuxOption []runtime.ServeMuxOption
 }
 
 func (p *proxy) Serve(l net.Listener) error {

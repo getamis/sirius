@@ -18,6 +18,7 @@ import (
 	"net/http"
 
 	"github.com/rs/cors"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 )
 
 type ProxyOption func(*proxy)
@@ -37,6 +38,12 @@ func HTTPServer(s *http.Server) ProxyOption {
 func Proxies(proxies ...Proxy) ProxyOption {
 	return func(p *proxy) {
 		p.apis = proxies
+	}
+}
+
+func ServerMuseOptions(smos ...runtime.ServeMuxOption) ProxyOption{
+	return func(p *proxy) {
+		p.serverMuxOption = append(p.serverMuxOption, smos...)
 	}
 }
 

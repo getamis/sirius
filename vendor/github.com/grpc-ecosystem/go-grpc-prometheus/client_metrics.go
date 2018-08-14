@@ -7,7 +7,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 // ClientMetrics represents a collection of metrics to be registered on a
@@ -113,20 +112,18 @@ func (m *ClientMetrics) UnaryClientInterceptor() func(ctx context.Context, metho
 		if err != nil {
 			monitor.ReceivedMessage()
 		}
-		st, _ := status.FromError(err)
-		monitor.Handled(st.Code())
+		monitor.Handled(grpc.Code(err))
 		return err
 	}
 }
 
-// StreamClientInterceptor is a gRPC client-side interceptor that provides Prometheus monitoring for Streaming RPCs.
+// StreamServerInterceptor is a gRPC client-side interceptor that provides Prometheus monitoring for Streaming RPCs.
 func (m *ClientMetrics) StreamClientInterceptor() func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 	return func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 		monitor := newClientReporter(m, clientStreamType(desc), method)
 		clientStream, err := streamer(ctx, desc, cc, method, opts...)
 		if err != nil {
-			st, _ := status.FromError(err)
-			monitor.Handled(st.Code())
+			monitor.Handled(grpc.Code(err))
 			return nil, err
 		}
 		return &monitoredClientStream{clientStream, monitor}, nil
@@ -163,8 +160,7 @@ func (s *monitoredClientStream) RecvMsg(m interface{}) error {
 	} else if err == io.EOF {
 		s.monitor.Handled(codes.OK)
 	} else {
-		st, _ := status.FromError(err)
-		s.monitor.Handled(st.Code())
+		s.monitor.Handled(grpc.Code(err))
 	}
 	return err
 }

@@ -6,9 +6,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/gengo/grpc-gateway/examples/examplepb"
-	"github.com/gengo/grpc-gateway/runtime"
 	"github.com/golang/glog"
+	"github.com/grpc-ecosystem/grpc-gateway/examples/examplepb"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -96,8 +96,7 @@ func Run(address string, opts ...runtime.ServeMuxOption) error {
 	}
 	mux.Handle("/", gw)
 
-	http.ListenAndServe(address, allowCORS(mux))
-	return nil
+	return http.ListenAndServe(address, allowCORS(mux))
 }
 
 func main() {

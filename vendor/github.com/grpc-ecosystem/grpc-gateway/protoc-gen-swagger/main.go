@@ -2,21 +2,23 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/gengo/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
-	"github.com/gengo/grpc-gateway/protoc-gen-swagger/genswagger"
 	"github.com/golang/glog"
 	"github.com/golang/protobuf/proto"
 	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
+	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway/descriptor"
+	"github.com/grpc-ecosystem/grpc-gateway/protoc-gen-swagger/genswagger"
 )
 
 var (
-	importPrefix = flag.String("import_prefix", "", "prefix to be added to go package paths for imported proto files")
-	file         = flag.String("file", "stdin", "where to load data from")
+	importPrefix    = flag.String("import_prefix", "", "prefix to be added to go package paths for imported proto files")
+	file            = flag.String("file", "stdin", "where to load data from")
+	allowDeleteBody = flag.Bool("allow_delete_body", false, "unless set, HTTP DELETE methods may not have a body")
 )
 
 func parseReq(r io.Reader) (*plugin.CodeGeneratorRequest, error) {
@@ -50,29 +52,21 @@ func main() {
 	if err != nil {
 		glog.Fatal(err)
 	}
+	pkgMap := make(map[string]string)
 	if req.Parameter != nil {
-		for _, p := range strings.Split(req.GetParameter(), ",") {
-			spec := strings.SplitN(p, "=", 2)
-			if len(spec) == 1 {
-				if err := flag.CommandLine.Set(spec[0], ""); err != nil {
-					glog.Fatalf("Cannot set flag %s", p)
-				}
-				continue
-			}
-			name, value := spec[0], spec[1]
-			if strings.HasPrefix(name, "M") {
-				reg.AddPkgMap(name[1:], value)
-				continue
-			}
-			if err := flag.CommandLine.Set(name, value); err != nil {
-				glog.Fatalf("Cannot set flag %s", p)
-			}
+		err := parseReqParam(req.GetParameter(), flag.CommandLine, pkgMap)
+		if err != nil {
+			glog.Fatalf("Error parsing flags: %v", err)
 		}
 	}
 
+	reg.SetPrefix(*importPrefix)
+	reg.SetAllowDeleteBody(*allowDeleteBody)
+	for k, v := range pkgMap {
+		reg.AddPkgMap(k, v)
+	}
 	g := genswagger.New(reg)
 
-	reg.SetPrefix(*importPrefix)
 	if err := reg.Load(req); err != nil {
 		emitError(err)
 		return
@@ -112,4 +106,39 @@ func emitResp(resp *plugin.CodeGeneratorResponse) {
 	if _, err := os.Stdout.Write(buf); err != nil {
 		glog.Fatal(err)
 	}
+}
+
+// parseReqParam parses a CodeGeneratorRequest parameter and adds the
+// extracted values to the given FlagSet and pkgMap. Returns a non-nil
+// error if setting a flag failed.
+func parseReqParam(param string, f *flag.FlagSet, pkgMap map[string]string) error {
+	if param == "" {
+		return nil
+	}
+	for _, p := range strings.Split(param, ",") {
+		spec := strings.SplitN(p, "=", 2)
+		if len(spec) == 1 {
+			if spec[0] == "allow_delete_body" {
+				err := f.Set(spec[0], "true")
+				if err != nil {
+					return fmt.Errorf("Cannot set flag %s: %v", p, err)
+				}
+				continue
+			}
+			err := f.Set(spec[0], "")
+			if err != nil {
+				return fmt.Errorf("Cannot set flag %s: %v", p, err)
+			}
+			continue
+		}
+		name, value := spec[0], spec[1]
+		if strings.HasPrefix(name, "M") {
+			pkgMap[name[1:]] = value
+			continue
+		}
+		if err := f.Set(name, value); err != nil {
+			return fmt.Errorf("Cannot set flag %s: %v", p, err)
+		}
+	}
+	return nil
 }

@@ -18,54 +18,40 @@ var (
 	ErrUnaddressable = errors.New("using unaddressable value")
 )
 
+type errorsInterface interface {
+	GetErrors() []error
+}
+
 // Errors contains all happened errors
-type Errors []error
-
-// IsRecordNotFoundError returns current error has record not found error or not
-func IsRecordNotFoundError(err error) bool {
-	if errs, ok := err.(Errors); ok {
-		for _, err := range errs {
-			if err == ErrRecordNotFound {
-				return true
-			}
-		}
-	}
-	return err == ErrRecordNotFound
+type Errors struct {
+	errors []error
 }
 
-// GetErrors gets all happened errors
+// GetErrors get all happened errors
 func (errs Errors) GetErrors() []error {
-	return errs
+	return errs.errors
 }
 
-// Add adds an error
-func (errs Errors) Add(newErrors ...error) Errors {
-	for _, err := range newErrors {
-		if err == nil {
-			continue
+// Add add an error
+func (errs *Errors) Add(err error) {
+	if errors, ok := err.(errorsInterface); ok {
+		for _, err := range errors.GetErrors() {
+			errs.Add(err)
 		}
-
-		if errors, ok := err.(Errors); ok {
-			errs = errs.Add(errors...)
-		} else {
-			ok = true
-			for _, e := range errs {
-				if err == e {
-					ok = false
-				}
-			}
-			if ok {
-				errs = append(errs, err)
+	} else {
+		for _, e := range errs.errors {
+			if err == e {
+				return
 			}
 		}
+		errs.errors = append(errs.errors, err)
 	}
-	return errs
 }
 
 // Error format happened errors
 func (errs Errors) Error() string {
 	var errors = []string{}
-	for _, e := range errs {
+	for _, e := range errs.errors {
 		errors = append(errors, e.Error())
 	}
 	return strings.Join(errors, "; ")

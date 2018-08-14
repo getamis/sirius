@@ -1,4 +1,4 @@
-package idtools // import "github.com/docker/docker/pkg/idtools"
+package idtools
 
 import (
 	"bufio"
@@ -30,8 +30,8 @@ func (e ranges) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
 func (e ranges) Less(i, j int) bool { return e[i].Start < e[j].Start }
 
 const (
-	subuidFileName = "/etc/subuid"
-	subgidFileName = "/etc/subgid"
+	subuidFileName string = "/etc/subuid"
+	subgidFileName string = "/etc/subgid"
 )
 
 // MkdirAllAndChown creates a directory (include any along the path) and then modifies
@@ -42,9 +42,7 @@ func MkdirAllAndChown(path string, mode os.FileMode, owner IDPair) error {
 }
 
 // MkdirAndChown creates a directory and then modifies ownership to the requested uid/gid.
-// If the directory already exists, this function still changes ownership.
-// Note that unlike os.Mkdir(), this function does not return IsExist error
-// in case path already exists.
+// If the directory already exists, this function still changes ownership
 func MkdirAndChown(path string, mode os.FileMode, owner IDPair) error {
 	return mkdirAs(path, mode, owner.UID, owner.GID, false, true)
 }

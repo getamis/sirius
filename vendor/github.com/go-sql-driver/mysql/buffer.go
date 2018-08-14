@@ -130,18 +130,18 @@ func (b *buffer) takeBuffer(length int) []byte {
 // smaller than defaultBufSize
 // Only one buffer (total) can be used at a time.
 func (b *buffer) takeSmallBuffer(length int) []byte {
-	if b.length > 0 {
-		return nil
+	if b.length == 0 {
+		return b.buf[:length]
 	}
-	return b.buf[:length]
+	return nil
 }
 
 // takeCompleteBuffer returns the complete existing buffer.
 // This can be used if the necessary buffer size is unknown.
 // Only one buffer (total) can be used at a time.
 func (b *buffer) takeCompleteBuffer() []byte {
-	if b.length > 0 {
-		return nil
+	if b.length == 0 {
+		return b.buf
 	}
-	return b.buf
+	return nil
 }

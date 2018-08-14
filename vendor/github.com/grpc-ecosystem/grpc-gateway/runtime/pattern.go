@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gengo/grpc-gateway/utilities"
+	"github.com/grpc-ecosystem/grpc-gateway/utilities"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -21,7 +21,7 @@ type op struct {
 	operand int
 }
 
-// Pattern is a template pattern of http request paths defined in third_party/googleapis/google/api/http.proto.
+// Pattern is a template pattern of http request paths defined in github.com/googleapis/googleapis/google/api/http.proto.
 type Pattern struct {
 	// ops is a list of operations
 	ops []op

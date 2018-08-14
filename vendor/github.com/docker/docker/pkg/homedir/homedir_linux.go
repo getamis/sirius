@@ -1,4 +1,6 @@
-package homedir // import "github.com/docker/docker/pkg/homedir"
+// +build linux
+
+package homedir
 
 import (
 	"os"

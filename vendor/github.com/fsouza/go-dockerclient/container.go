@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-units"
+	units "github.com/docker/go-units"
+	"golang.org/x/net/context"
 )
 
 // ErrContainerAlreadyExists is the error returned by CreateContainer when the
@@ -303,7 +303,6 @@ type Config struct {
 	StopTimeout       int                 `json:"StopTimeout,omitempty" yaml:"StopTimeout,omitempty" toml:"StopTimeout,omitempty"`
 	Env               []string            `json:"Env,omitempty" yaml:"Env,omitempty" toml:"Env,omitempty"`
 	Cmd               []string            `json:"Cmd" yaml:"Cmd" toml:"Cmd"`
-	Shell             []string            `json:"Shell,omitempty" yaml:"Shell,omitempty" toml:"Shell,omitempty"`
 	Healthcheck       *HealthConfig       `json:"Healthcheck,omitempty" yaml:"Healthcheck,omitempty" toml:"Healthcheck,omitempty"`
 	DNS               []string            `json:"Dns,omitempty" yaml:"Dns,omitempty" toml:"Dns,omitempty"` // For Docker API v1.9 and below only
 	Image             string              `json:"Image,omitempty" yaml:"Image,omitempty" toml:"Image,omitempty"`
@@ -1288,10 +1287,9 @@ func (c *Client) DownloadFromContainer(id string, opts DownloadFromContainerOpti
 	})
 }
 
-// CopyFromContainerOptions contains the set of options used for copying
-// files from a container.
+// CopyFromContainerOptions has been DEPRECATED, please use DownloadFromContainerOptions along with DownloadFromContainer.
 //
-// Deprecated: Use DownloadFromContainerOptions and DownloadFromContainer instead.
+// See https://goo.gl/nWk2YQ for more details.
 type CopyFromContainerOptions struct {
 	OutputStream io.Writer `json:"-"`
 	Container    string    `json:"-"`
@@ -1299,9 +1297,9 @@ type CopyFromContainerOptions struct {
 	Context      context.Context `json:"-"`
 }
 
-// CopyFromContainer copies files from a container.
+// CopyFromContainer has been DEPRECATED, please use DownloadFromContainerOptions along with DownloadFromContainer.
 //
-// Deprecated: Use DownloadFromContainer and DownloadFromContainer instead.
+// See https://goo.gl/nWk2YQ for more details.
 func (c *Client) CopyFromContainer(opts CopyFromContainerOptions) error {
 	if opts.Container == "" {
 		return &NoSuchContainer{ID: opts.Container}

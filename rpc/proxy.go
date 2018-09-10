@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/metrics"
 	"github.com/getamis/sirius/rpc/pb"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/urfave/negroni"
@@ -53,14 +54,23 @@ type Proxy interface {
 
 // Server represents a gRPC server
 type proxy struct {
-	middlewares []Middleware
-	router      *negroni.Negroni
-	server      *runtime.ServeMux
-	httpServer  *http.Server
-	apis        []Proxy
+	middlewares    []Middleware
+	router         *negroni.Negroni
+	server         *runtime.ServeMux
+	httpServer     *http.Server
+	apis           []Proxy
+	metricsOptions []metrics.Option
+	metricsEnabled bool
 }
 
 func (p *proxy) Serve(l net.Listener) error {
+	// set metrics middleware as first if enabled
+	if p.metricsEnabled {
+		p.middlewares = append([]Middleware{
+			metrics.NewHttpServerMetrics(p.metricsOptions...),
+		}, p.middlewares...)
+	}
+
 	for _, mw := range p.middlewares {
 		p.router.Use(mw.((negroni.Handler)))
 	}

@@ -18,6 +18,8 @@ import (
 	"net/http"
 
 	"github.com/rs/cors"
+
+	"github.com/getamis/sirius/metrics"
 )
 
 type ProxyOption func(*proxy)
@@ -54,5 +56,12 @@ func AllowCORS(origins []string) ProxyOption {
 			AllowedOrigins: origins,
 		})
 		p.middlewares = append(p.middlewares, c)
+	}
+}
+
+func HttpMetrics(opts ...metrics.Option) ProxyOption {
+	return func(p *proxy) {
+		p.metricsOptions = opts
+		p.metricsEnabled = true
 	}
 }

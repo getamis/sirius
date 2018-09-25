@@ -64,6 +64,23 @@ var _ = Describe("MySQL Options", func() {
 			})
 		})
 
+		Context("Location", func() {
+			It("should match", func() {
+				location := "location"
+				expectedOptions := &options{
+					Location: location,
+				}
+
+				options := defaultOptions()
+				fn := Location(location)
+				fn(options)
+
+				Expect(options.Location).Should(Equal(expectedOptions.Location))
+				gotConntectionString, _ := ToConnectionString(fn)
+				Expect(gotConntectionString).Should(Equal(options.String()))
+			})
+		})
+
 		Context("Database", func() {
 			It("should match", func() {
 				dbName := "This is a database name"
@@ -83,7 +100,7 @@ var _ = Describe("MySQL Options", func() {
 
 		Context("DSNToOptions", func() {
 			It("should match", func() {
-				dsn := "root:my-secret-pw@tcp(192.168.99.100:26613)/mysql?charset=utf8&parseTime=True&loc=Local&allowNativePasswords=true"
+				dsn := "root:my-secret-pw@tcp(192.168.99.100:26613)/mysql?charset=utf8&parseTime=True&loc=UTC&allowNativePasswords=true"
 				conntecionOption, userOption, dbOption := DSNToOptions(dsn)
 				gotConntectionString, err := ToConnectionString(conntecionOption, userOption, dbOption)
 				Expect(err).Should(BeNil())

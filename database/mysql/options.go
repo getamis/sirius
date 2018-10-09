@@ -75,7 +75,7 @@ func AllowNativePasswords(allow bool) Option {
 func (o *options) String() string {
 	loc := o.Location
 	if loc == "" {
-		loc = "UTC"
+		loc = "Local"
 	}
 	return fmt.Sprintf(
 		"%s:%s@%s(%s:%s)/%s?charset=utf8&parseTime=True&loc=%s&allowNativePasswords=%v",

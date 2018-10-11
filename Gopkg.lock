@@ -377,6 +377,14 @@
   revision = "780932d4fbbe0e69b84c34c20f5c8d0981e109ea"
 
 [[projects]]
+  digest = "1:ee1b3578944f593d9692e9c9ec8bf693f262785a4d5ba90bf0faf42146e41f88"
+  name = "github.com/rollbar/rollbar-go"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "5f41889d7c6a59e4add07998cf776b1d335d287f"
+  version = "v1.0.1"
+
+[[projects]]
   digest = "1:810d960260b42c751f5254f6dbff5e6c79c8047b90a9bf4a06bba479b99aff1d"
   name = "github.com/rs/cors"
   packages = ["."]
@@ -616,6 +624,7 @@
     "github.com/onsi/gomega",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
+    "github.com/rollbar/rollbar-go",
     "github.com/rs/cors",
     "github.com/satori/go.uuid",
     "github.com/spf13/cobra",

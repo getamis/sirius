@@ -100,7 +100,7 @@ var _ = Describe("MySQL Options", func() {
 
 		Context("DSNToOptions", func() {
 			It("should match", func() {
-				dsn := "root:my-secret-pw@tcp(192.168.99.100:26613)/mysql?charset=utf8&parseTime=True&loc=UTC&allowNativePasswords=true"
+				dsn := "root:my-secret-pw@tcp(192.168.99.100:26613)/mysql?charset=utf8&parseTime=True&loc=Local&allowNativePasswords=true"
 				conntecionOption, userOption, dbOption := DSNToOptions(dsn)
 				gotConntectionString, err := ToConnectionString(conntecionOption, userOption, dbOption)
 				Expect(err).Should(BeNil())

@@ -40,6 +40,54 @@ func (container *MySQLContainer) Stop() error {
 	return container.dockerContainer.Stop()
 }
 
+// MigrationOptions for mysql migration container
+type MigrationOptions struct {
+	Host     string
+	Port     int
+	Database string
+	Username string
+	Password string
+	Command  []string
+}
+
+// RunMigrationContainer creates the migration container and connects to the
+// mysql database to run the migration scripts.
+func RunMigrationContainer(migrationRepository string, options MigrationOptions) error {
+	// the default command
+	command := []string{"bundle", "exec", "rake", "db:migrate"}
+	if len(options.Command) > 0 {
+		command = options.Command
+	}
+
+	container := NewDockerContainer(
+		ImageRepository(migrationRepository),
+		ImageTag("latest"),
+		DockerEnv(
+			[]string{
+				"RAILS_ENV=customized",
+				fmt.Sprintf("HOST=%s", options.Host),
+				fmt.Sprintf("PORT=%d", options.Port),
+				fmt.Sprintf("DATABASE=%s", options.Database),
+				fmt.Sprintf("USERNAME=%s", options.Username),
+				fmt.Sprintf("PASSWORD=%s", options.Password),
+			},
+		),
+		RunOptions(command),
+	)
+
+	if err := container.Start(); err != nil {
+		log.Error("Failed to start container", "err", err)
+		return err
+	}
+
+	if err := container.Wait(); err != nil {
+		log.Error("Failed to wait container", "err", err)
+		return err
+	}
+
+	return container.Stop()
+}
+
 func NewMySQLContainer(migrationRepository string) (*MySQLContainer, error) {
 	port := 3306
 	password := "my-secret-pw"
@@ -81,37 +129,13 @@ func NewMySQLContainer(migrationRepository string) (*MySQLContainer, error) {
 					return nil
 				}
 
-				migrationContainer := NewDockerContainer(
-					ImageRepository(migrationRepository),
-					ImageTag("latest"),
-					DockerEnv(
-						[]string{
-							"RAILS_ENV=customized",
-							fmt.Sprintf("HOST=%s", inspectedContainer.NetworkSettings.IPAddress),
-							fmt.Sprintf("PORT=%d", port),
-							fmt.Sprintf("DATABASE=%s", database),
-							"USERNAME=root",
-							fmt.Sprintf("PASSWORD=%s", password),
-						},
-					),
-					RunOptions(
-						[]string{
-							"bundle", "exec", "rake", "db:migrate",
-						},
-					),
-				)
-
-				if err := migrationContainer.Start(); err != nil {
-					log.Error("Failed to start container", "err", err)
-					return err
-				}
-
-				if err := migrationContainer.Wait(); err != nil {
-					log.Error("Failed to wait container", "err", err)
-					return err
-				}
-
-				return migrationContainer.Stop()
+				return RunMigrationContainer(migrationRepository, MigrationOptions{
+					Host:     inspectedContainer.NetworkSettings.IPAddress,
+					Port:     port,
+					Database: database,
+					Username: "root",
+					Password: password,
+				})
 			}),
 		),
 	}

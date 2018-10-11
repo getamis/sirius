@@ -42,34 +42,40 @@ func (container *MySQLContainer) Stop() error {
 
 // MigrationOptions for mysql migration container
 type MigrationOptions struct {
-	Host     string
-	Port     int
-	Database string
-	Username string
-	Password string
-	Command  []string
+	ImageRepository string
+	ImageTag        string
+
+	MySQLOptions MySQLOptions
+
+	// this command will override the default command.
+	// "bundle" "exec" "rake" "db:migrate"
+	Command []string
 }
 
 // RunMigrationContainer creates the migration container and connects to the
 // mysql database to run the migration scripts.
-func RunMigrationContainer(migrationRepository string, options MigrationOptions) error {
+func RunMigrationContainer(options MigrationOptions) error {
 	// the default command
 	command := []string{"bundle", "exec", "rake", "db:migrate"}
 	if len(options.Command) > 0 {
 		command = options.Command
 	}
 
+	if len(options.ImageTag) == 0 {
+		options.ImageTag = "latest"
+	}
+
 	container := NewDockerContainer(
-		ImageRepository(migrationRepository),
-		ImageTag("latest"),
+		ImageRepository(options.ImageRepository),
+		ImageTag(options.ImageTag),
 		DockerEnv(
 			[]string{
 				"RAILS_ENV=customized",
-				fmt.Sprintf("HOST=%s", options.Host),
-				fmt.Sprintf("PORT=%d", options.Port),
-				fmt.Sprintf("DATABASE=%s", options.Database),
-				fmt.Sprintf("USERNAME=%s", options.Username),
-				fmt.Sprintf("PASSWORD=%s", options.Password),
+				fmt.Sprintf("HOST=%s", options.MySQLOptions.Host),
+				fmt.Sprintf("PORT=%d", options.MySQLOptions.Port),
+				fmt.Sprintf("DATABASE=%s", options.MySQLOptions.Database),
+				fmt.Sprintf("USERNAME=%s", options.MySQLOptions.Username),
+				fmt.Sprintf("PASSWORD=%s", options.MySQLOptions.Password),
 			},
 		),
 		RunOptions(command),
@@ -88,15 +94,36 @@ func RunMigrationContainer(migrationRepository string, options MigrationOptions)
 	return container.Stop()
 }
 
-func NewMySQLContainer(migrationRepository string) (*MySQLContainer, error) {
-	port := 3306
-	password := "my-secret-pw"
-	database := "db0"
+type MySQLOptions struct {
+	// The following options are used in the connection string and the mysql server container itself.
+	Username string
+	Password string
+	Port     int
+	Database string
+
+	// The host address that will be used to build the connection string
+	Host string
+}
+
+var DefaultMySQLOptions = MySQLOptions{
+	Username: "root",
+	Password: "my-secret-pw",
+	Port:     3306,
+	Database: "db0",
+
+	Host: "127.0.0.1",
+}
+
+func NewMySQLContainer(options MySQLOptions) (*MySQLContainer, error) {
+
+	// We use this connection string to verify the mysql container is ready.
 	connectionString, _ := mysql.ToConnectionString(
-		mysql.Connector(mysql.DefaultProtocol, "127.0.0.1", fmt.Sprintf("%d", port)),
-		mysql.Database(database),
-		mysql.UserInfo("root", password),
+		mysql.Connector(mysql.DefaultProtocol, options.Host, fmt.Sprintf("%d", options.Port)),
+		mysql.Database(options.Database),
+		mysql.UserInfo(options.Username, options.Password),
 	)
+
+	// Once the mysql container is ready, we will create the database if it does not exist.
 	checker := func(c *Container) error {
 		return retry(10, 5*time.Second, func() error {
 			db, err := sql.Open("mysql", connectionString)
@@ -104,39 +131,24 @@ func NewMySQLContainer(migrationRepository string) (*MySQLContainer, error) {
 				return err
 			}
 			defer db.Close()
-			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", database))
+			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", options.Database))
 			return err
 		})
 	}
+
+	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
 		dockerContainer: NewDockerContainer(
 			ImageRepository("mysql"),
 			ImageTag("5.7"),
-			Ports(port),
+			Ports(options.Port),
 			DockerEnv(
 				[]string{
-					fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", password),
-					fmt.Sprintf("MYSQL_DATABASE=%s", database),
+					fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", options.Password),
+					fmt.Sprintf("MYSQL_DATABASE=%s", options.Database),
 				},
 			),
 			HealthChecker(checker),
-			Initializer(func(c *Container) error {
-				inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
-				if err != nil {
-					return err
-				}
-				if migrationRepository == "" {
-					return nil
-				}
-
-				return RunMigrationContainer(migrationRepository, MigrationOptions{
-					Host:     inspectedContainer.NetworkSettings.IPAddress,
-					Port:     port,
-					Database: database,
-					Username: "root",
-					Password: password,
-				})
-			}),
 		),
 	}
 

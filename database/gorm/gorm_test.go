@@ -59,7 +59,7 @@ var _ = Describe("Test GORM", func() {
 })
 
 var _ = BeforeSuite(func() {
-	mySQLContainer, _ = test.NewMySQLContainer("")
+	mySQLContainer, _ = test.NewMySQLContainer(mysql.DefaultMySQLOptions)
 	mySQLContainer.Start()
 })
 

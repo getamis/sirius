@@ -114,7 +114,7 @@ var DefaultMySQLOptions = MySQLOptions{
 	Host: "127.0.0.1",
 }
 
-func NewMySQLContainer(options MySQLOptions) (*MySQLContainer, error) {
+func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQLContainer, error) {
 
 	// We use this connection string to verify the mysql container is ready.
 	connectionString, _ := mysql.ToConnectionString(
@@ -139,16 +139,21 @@ func NewMySQLContainer(options MySQLOptions) (*MySQLContainer, error) {
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
 		dockerContainer: NewDockerContainer(
-			ImageRepository("mysql"),
-			ImageTag("5.7"),
-			Ports(options.Port),
-			DockerEnv(
-				[]string{
-					fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", options.Password),
-					fmt.Sprintf("MYSQL_DATABASE=%s", options.Database),
-				},
-			),
-			HealthChecker(checker),
+			// this is to keep some flexibility for passing extra container options..
+			// however if we literally use "..." in the method call, an error
+			// "too many arguments" will raise.
+			append([]Option{
+				ImageRepository("mysql"),
+				ImageTag("5.7"),
+				Ports(options.Port),
+				DockerEnv(
+					[]string{
+						fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", options.Password),
+						fmt.Sprintf("MYSQL_DATABASE=%s", options.Database),
+					},
+				),
+				HealthChecker(checker),
+			}, containerOptions...)...,
 		),
 	}
 

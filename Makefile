@@ -58,6 +58,12 @@ grpc: FORCE
 	@protoc $(PROTOC_INCLUDES) \
 		--grpc-gateway_out=logtostderr=true:$(GOPATH)/src $(addprefix $(CURDIR)/,$(PROTOS))
 
+deps:
+	docker pull mysql:5.7
+	docker pull quay.io/coreos/etcd:v3.0.6
+	docker pull rabbitmq:3.6.2-management
+	docker pull redis:3-alpine
+
 clean:
 	rm -fr $(GOBIN)/*
 

@@ -16,20 +16,26 @@ package test
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/getamis/sirius/database/mysql"
 	"github.com/getamis/sirius/log"
 )
 
+var ErrMySQLNotStarted = errors.New("MySQL container is not started.")
+
 type MySQLContainer struct {
 	dockerContainer *Container
+	Started         bool
 	URL             string
 }
 
 func (container *MySQLContainer) Start() error {
+	container.Started = true
 	return container.dockerContainer.Start()
 }
 
@@ -38,7 +44,11 @@ func (container *MySQLContainer) Suspend() error {
 }
 
 func (container *MySQLContainer) Stop() error {
-	return container.dockerContainer.Stop()
+	if container.Started {
+		container.Started = false
+		return container.dockerContainer.Stop()
+	}
+	return ErrMySQLNotStarted
 }
 
 // MigrationOptions for mysql migration container
@@ -173,6 +183,59 @@ func ToMySQLConnectionString(c *Container, options MySQLOptions) (string, error)
 		mysql.Database(options.Database),
 		mysql.UserInfo(options.Username, options.Password),
 	)
+}
+
+// setup the mysql connection
+// if TEST_MYSQL_HOST is defined, then we will use the connection directly.
+// if not, a mysql container will be started
+func SetupMySQL() (*MySQLContainer, error) {
+	if host, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
+		port := DefaultMySQLOptions.Port
+		if val, ok := os.LookupEnv("TEST_MYSQL_PORT"); ok {
+			if p, err := strconv.Atoi(val); err != nil {
+				return nil, err
+			} else {
+				port = p
+			}
+		}
+
+		database := DefaultMySQLOptions.Database
+		if val, ok := os.LookupEnv("TEST_MYSQL_DATABASE"); ok {
+			database = val
+		}
+
+		username := DefaultMySQLOptions.Username
+		if val, ok := os.LookupEnv("TEST_MYSQL_USERNAME"); ok {
+			username = val
+		}
+
+		password := DefaultMySQLOptions.Password
+		if val, ok := os.LookupEnv("TEST_MYSQL_PASSWORD"); ok {
+			password = val
+		}
+
+		connectionString, err := mysql.ToConnectionString(
+			mysql.Connector(mysql.DefaultProtocol, host, fmt.Sprintf("%d", port)),
+			mysql.Database(database),
+			mysql.UserInfo(username, password),
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return &MySQLContainer{URL: connectionString}, nil
+	}
+
+	container, err := NewMySQLContainer(DefaultMySQLOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := container.Start(); err != nil {
+		return container, err
+	}
+
+	return container, nil
 }
 
 func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQLContainer, error) {

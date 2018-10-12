@@ -144,7 +144,7 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 
 	// Once the mysql container is ready, we will create the database if it does not exist.
 	checker := func(c *Container) error {
-		return retry(10, 5*time.Second, func() error {
+		return retry(10, 10*time.Second, func() error {
 			db, err := sql.Open("mysql", connectionString)
 			if err != nil {
 				return err

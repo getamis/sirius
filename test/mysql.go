@@ -17,6 +17,7 @@ package test
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/getamis/sirius/database/mysql"
@@ -108,10 +109,28 @@ type MySQLOptions struct {
 var DefaultMySQLOptions = MySQLOptions{
 	Username: "root",
 	Password: "my-secret-pw",
-	Port:     3306,
+
+	// Currently the port will be published to the host.
+	Port: 3306,
+
+	// The db we want to run the test
 	Database: "db0",
 
+	// the mysql host to be connected from the client
+	// if we're running test on the host, we might need to connect to the mysql
+	// server via 127.0.0.1:3306. however if we want to run the test inside the container,
+	// we need to inspect the IP of the container
 	Host: "127.0.0.1",
+}
+
+func IsInsideContainer() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	if _, err := os.Stat("/bin/running-in-container"); err == nil {
+		return true
+	}
+	return false
 }
 
 func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQLContainer, error) {

@@ -249,6 +249,8 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 		// mysql container port always expose the server port on 3306
 		containerOptions = append(containerOptions, ExposePorts("3306"))
 		containerOptions = append(containerOptions, HostPortBindings(PortBinding{"3306/tcp", options.Port}))
+	} else {
+		containerOptions = append(containerOptions, ExposePorts("3306"))
 	}
 
 	// Create the container, please note that the container is not started yet.

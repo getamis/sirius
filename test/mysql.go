@@ -44,7 +44,12 @@ func (container *MySQLContainer) Suspend() error {
 }
 
 func (container *MySQLContainer) Stop() error {
-	if container.Started {
+	container.Started = false
+	return container.dockerContainer.Stop()
+}
+
+func (container *MySQLContainer) Teardown() error {
+	if container.dockerContainer != nil && container.Started {
 		container.Started = false
 		return container.dockerContainer.Stop()
 	}

@@ -21,7 +21,6 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 	"github.com/getamis/sirius/crypto/rand"
-	"github.com/getamis/sirius/log"
 )
 
 type Container struct {

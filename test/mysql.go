@@ -133,8 +133,27 @@ func IsInsideContainer() bool {
 	return false
 }
 
-func NewMySQLHealthChecker(connectionString string) Option {
+func NewMySQLHealthChecker(options MySQLOptions, connectionString string) healthChecker {
 	return func(c *Container) error {
+		// By default we will use the host that is defined in the mysql options
+		var host string = options.Host
+
+		// If we're inside the container, we need to override the hostname
+		// defined in the option
+		if IsInsideContainer() {
+			inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
+			if err != nil {
+				return err
+			}
+			host = inspectedContainer.NetworkSettings.IPAddress
+		}
+
+		connectionString, _ := mysql.ToConnectionString(
+			mysql.Connector(mysql.DefaultProtocol, host, fmt.Sprintf("%d", options.Port)),
+			mysql.Database(options.Database),
+			mysql.UserInfo(options.Username, options.Password),
+		)
+
 		return retry(10, 10*time.Second, func() error {
 			db, err := sql.Open("mysql", connectionString)
 			if err != nil {
@@ -156,7 +175,7 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 	)
 
 	// Once the mysql container is ready, we will create the database if it does not exist.
-	checker := NewMySQLHealthChecker(connectionString)
+	checker := NewMySQLHealthChecker(options, connectionString)
 
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{

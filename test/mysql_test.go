@@ -32,7 +32,9 @@ func TestMySQLSetupAndTeardown(t *testing.T) {
 }
 
 func TestMySQLContainer(t *testing.T) {
-	container, err := NewMySQLContainer(DefaultMySQLOptions)
+	options := LoadMySQLOptions()
+
+	container, err := NewMySQLContainer(options)
 	assert.NoError(t, err, "mysql container should be created.")
 	assert.NotNil(t, container)
 	assert.NoError(t, container.Start(), "mysql container should be started")

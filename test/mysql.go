@@ -186,35 +186,39 @@ func ToMySQLConnectionString(c *Container, options MySQLOptions) (string, error)
 	)
 }
 
+func LoadMySQLOptions() MySQLOptions {
+	options := DefaultMySQLOptions
+	if host, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
+		options.Host = host
+	}
+	if val, ok := os.LookupEnv("TEST_MYSQL_PORT"); ok {
+		options.Port = val
+	}
+
+	if val, ok := os.LookupEnv("TEST_MYSQL_DATABASE"); ok {
+		options.Database = val
+	}
+
+	if val, ok := os.LookupEnv("TEST_MYSQL_USERNAME"); ok {
+		options.Username = val
+	}
+
+	if val, ok := os.LookupEnv("TEST_MYSQL_PASSWORD"); ok {
+		options.Password = val
+	}
+	return options
+}
+
 // setup the mysql connection
 // if TEST_MYSQL_HOST is defined, then we will use the connection directly.
 // if not, a mysql container will be started
 func SetupMySQL() (*MySQLContainer, error) {
-	if host, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
-		port := DefaultMySQLOptions.Port
-		if val, ok := os.LookupEnv("TEST_MYSQL_PORT"); ok {
-			port = val
-		}
-
-		database := DefaultMySQLOptions.Database
-		if val, ok := os.LookupEnv("TEST_MYSQL_DATABASE"); ok {
-			database = val
-		}
-
-		username := DefaultMySQLOptions.Username
-		if val, ok := os.LookupEnv("TEST_MYSQL_USERNAME"); ok {
-			username = val
-		}
-
-		password := DefaultMySQLOptions.Password
-		if val, ok := os.LookupEnv("TEST_MYSQL_PASSWORD"); ok {
-			password = val
-		}
-
+	if _, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
+		options := LoadMySQLOptions()
 		connectionString, err := mysql.ToConnectionString(
-			mysql.Connector(mysql.DefaultProtocol, host, port),
-			mysql.Database(database),
-			mysql.UserInfo(username, password),
+			mysql.Connector(mysql.DefaultProtocol, options.Host, options.Port),
+			mysql.Database(options.Database),
+			mysql.UserInfo(options.Username, options.Password),
 		)
 		if err != nil {
 			return nil, err

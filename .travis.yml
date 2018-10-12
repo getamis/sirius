@@ -5,6 +5,7 @@ go:
 
 services:
 - docker
+- mysql
 
 addons:
   apt:

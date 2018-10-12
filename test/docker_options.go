@@ -58,7 +58,7 @@ func DockerEnv(env []string) Option {
 	}
 }
 
-func HealthChecker(checker healthChecker) Option {
+func HealthChecker(checker ContainerCallback) Option {
 	return func(c *Container) {
 		c.healthChecker = checker
 	}

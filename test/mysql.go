@@ -133,27 +133,13 @@ func IsInsideContainer() bool {
 	return false
 }
 
-func NewMySQLHealthChecker(options MySQLOptions) healthChecker {
+func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 	return func(c *Container) error {
-		// By default we will use the host that is defined in the mysql options
-		var host string = options.Host
-
-		// If we're inside the container, we need to override the hostname
-		// defined in the option
-		if IsInsideContainer() {
-			inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
-			if err != nil {
-				return err
-			}
-			host = inspectedContainer.NetworkSettings.IPAddress
-		}
-
 		// We use this connection string to verify the mysql container is ready.
-		connectionString, _ := mysql.ToConnectionString(
-			mysql.Connector(mysql.DefaultProtocol, host, fmt.Sprintf("%d", options.Port)),
-			mysql.Database(options.Database),
-			mysql.UserInfo(options.Username, options.Password),
-		)
+		connectionString, err := ToMySQLConnectionString(c, options)
+		if err != nil {
+			return err
+		}
 
 		return retry(10, 10*time.Second, func() error {
 			db, err := sql.Open("mysql", connectionString)
@@ -165,6 +151,28 @@ func NewMySQLHealthChecker(options MySQLOptions) healthChecker {
 			return err
 		})
 	}
+}
+
+func ToMySQLConnectionString(c *Container, options MySQLOptions) (string, error) {
+	// By default we will use the host that is defined in the mysql options
+	var host string = options.Host
+
+	// If we're inside the container, we need to override the hostname
+	// defined in the option
+	if IsInsideContainer() {
+		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
+		if err != nil {
+			return "", err
+		}
+		host = inspectedContainer.NetworkSettings.IPAddress
+	}
+
+	// We use this connection string to verify the mysql container is ready.
+	return mysql.ToConnectionString(
+		mysql.Connector(mysql.DefaultProtocol, host, fmt.Sprintf("%d", options.Port)),
+		mysql.Database(options.Database),
+		mysql.UserInfo(options.Username, options.Password),
+	)
 }
 
 func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQLContainer, error) {
@@ -192,6 +200,12 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 		),
 	}
 
+	// FIXME
+	connectionString, _ := mysql.ToConnectionString(
+		mysql.Connector(mysql.DefaultProtocol, options.Host, fmt.Sprintf("%d", options.Port)),
+		mysql.Database(options.Database),
+		mysql.UserInfo(options.Username, options.Password),
+	)
 	container.URL = connectionString
 	return container, nil
 }

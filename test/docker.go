@@ -32,11 +32,11 @@ type Container struct {
 	runArgs          []string
 	envs             []string
 	container        *docker.Container
-	healthChecker    healthChecker
-	initializer      func(*Container) error
+	healthChecker    ContainerCallback
+	initializer      ContainerCallback
 }
 
-type healthChecker func(*Container) error
+type ContainerCallback func(*Container) error
 
 func NewDockerContainer(opts ...Option) *Container {
 	c := &Container{
@@ -94,6 +94,10 @@ func newDockerClient() *docker.Client {
 		client, _ = docker.NewClient("unix:///var/run/docker.sock")
 	}
 	return client
+}
+
+func (c *Container) OnReady(initializer ContainerCallback) {
+	c.initializer = initializer
 }
 
 func (c *Container) Start() error {

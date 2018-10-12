@@ -13,7 +13,6 @@ addons:
       - docker-ce
 
 before_script:
-  - sudo service mysql stop
   - make deps
 
 branches:
@@ -22,8 +21,12 @@ branches:
 
 jobs:
   include:
+    - stage: Host MySQL Test
+      script:
+      - TEST_MYSQL_HOST=127.0.0.1 TEST_MYSQL_PORT=3306 TEST_MYSQL_PASSWORD="" go test ./test
     - stage: Unit Test
-      script: make test
+      script:
+      - make test
     - stage: Release
       if: tag =~ ^v
       env: REV="$TRAVIS_TAG"

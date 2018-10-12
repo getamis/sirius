@@ -23,6 +23,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMySQLSetupAndTeardown(t *testing.T) {
+	mysql, err := SetupMySQL()
+	assert.NoError(t, err, "mysql connection handle should be created.")
+
+	err = mysql.Teardown()
+	assert.NoError(t, err, "mysql connection handle should be torn down.")
+}
+
 func TestMySQLContainer(t *testing.T) {
 	container, err := NewMySQLContainer(DefaultMySQLOptions)
 	assert.NoError(t, err, "mysql container should be created.")

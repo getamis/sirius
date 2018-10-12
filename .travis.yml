@@ -22,8 +22,12 @@ branches:
 jobs:
   include:
     - stage: Host MySQL Test
+      env:
+      - TEST_MYSQL_HOST=127.0.0.1
+      - TEST_MYSQL_PORT=3306
+      - TEST_MYSQL_PASSWORD=""
       script:
-      - TEST_MYSQL_HOST=127.0.0.1 TEST_MYSQL_PORT=3306 TEST_MYSQL_PASSWORD="" go test ./test
+      - go test ./test
     - stage: Unit Test
       script:
       - make test

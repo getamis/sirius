@@ -16,6 +16,7 @@ package test
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	docker "github.com/fsouza/go-dockerclient"
@@ -80,8 +81,7 @@ func NewDockerContainer(opts ...Option) *Container {
 		Context: context.TODO(),
 	})
 	if err != nil {
-		log.Error("Failed to create a container", "repository", c.imageRespository, "tag", c.imageTag, "err", err)
-		return nil
+		panic(fmt.Errorf("Failed to create a container %s:%s error:%s", c.imageRespository, c.imageTag, err))
 	}
 
 	return c

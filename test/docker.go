@@ -50,10 +50,11 @@ func NewDockerContainer(opts ...Option) *Container {
 		opt(c)
 	}
 
-	portBindings := make(map[docker.Port][]docker.PortBinding)
-	exposedPorts := make(map[docker.Port]struct{})
-
-	if len(c.ports) != 0 {
+	var portBindings map[docker.Port][]docker.PortBinding = nil
+	var exposedPorts map[docker.Port]struct{} = nil
+	if len(c.ports) > 0 {
+		exposedPorts = make(map[docker.Port]struct{})
+		portBindings = make(map[docker.Port][]docker.PortBinding)
 		for _, port := range c.ports {
 			portBindings[docker.Port(port)] = []docker.PortBinding{
 				{

@@ -24,7 +24,7 @@ import (
 )
 
 func TestMySQLContainer(t *testing.T) {
-	container, _ := NewMySQLContainer("")
+	container, _ := NewMySQLContainer(DefaultMySQLOptions)
 	assert.NotNil(t, container)
 	assert.NoError(t, container.Start())
 

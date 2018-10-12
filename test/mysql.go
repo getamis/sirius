@@ -212,7 +212,7 @@ func SetupMySQL() (*MySQLContainer, error) {
 		}
 
 		connectionString, err := mysql.ToConnectionString(
-			mysql.Connector(mysql.DefaultProtocol, host, fmt.Sprintf("%d", port)),
+			mysql.Connector(mysql.DefaultProtocol, host, port),
 			mysql.Database(database),
 			mysql.UserInfo(username, password),
 		)
@@ -239,6 +239,14 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 	// Once the mysql container is ready, we will create the database if it does not exist.
 	checker := NewMySQLHealthChecker(options)
 
+	// In order to let the tests connect to the mysql server, we need to
+	// publish the port 3306 to the host only when we're on the host
+	if !IsInsideContainer() {
+		// mysql container port always expose the server port on 3306
+		containerOptions = append(containerOptions, ExposePorts("3306"))
+		containerOptions = append(containerOptions, HostPortBindings(PortBinding{"3306/tcp", options.Port}))
+	}
+
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
 		dockerContainer: NewDockerContainer(
@@ -257,12 +265,6 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 				HealthChecker(checker),
 			}, containerOptions...)...,
 		),
-	}
-
-	// we should publish the ports only when we're on the host
-	if !IsInsideContainer() {
-		// mysql container port always expose the server port on 3306
-		container.dockerContainer.AddHostPortBinding("3306", options.Port)
 	}
 
 	// FIXME: the connection string should depend on the "IsInsideContainer" condition

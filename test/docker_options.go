@@ -36,6 +36,29 @@ func ImageTag(tag string) Option {
 	}
 }
 
+type PortBinding struct {
+	ContainerPort string
+	HostPort      string
+}
+
+func HostPortBindings(bindings ...PortBinding) Option {
+	return func(c *Container) {
+		for _, binding := range bindings {
+			c.addHostPortBinding(binding.ContainerPort, binding.HostPort)
+		}
+	}
+}
+
+func ExposePorts(ports ...string) Option {
+	return func(c *Container) {
+		for _, port := range ports {
+			c.exposePort(port)
+		}
+	}
+}
+
+// Ports function automatically combines port bindings and exposes ports of the
+// container
 func Ports(ports ...int) Option {
 	return func(c *Container) {
 		var p []string

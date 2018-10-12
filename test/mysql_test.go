@@ -24,12 +24,13 @@ import (
 )
 
 func TestMySQLContainer(t *testing.T) {
-	container, _ := NewMySQLContainer(DefaultMySQLOptions)
+	container, err := NewMySQLContainer(DefaultMySQLOptions)
+	assert.NoError(t, err, "mysql container should be created.")
 	assert.NotNil(t, container)
-	assert.NoError(t, container.Start())
+	assert.NoError(t, container.Start(), "mysql container should be started")
 
 	db, err := gorm.Open("mysql", container.URL)
-	assert.NoError(t, err, "should be no error")
+	assert.NoError(t, err, "mysql connection should work")
 	db.Close()
 
 	// stop MySQL

@@ -44,6 +44,8 @@ type ContainerCallback func(*Container) error
 
 func NewDockerContainer(opts ...Option) *Container {
 	c := &Container{
+		portBindings: make(map[docker.Port][]docker.PortBinding),
+		exposedPorts: make(map[docker.Port]struct{}),
 		dockerClient: newDockerClient(),
 		healthChecker: func(c *Container) error {
 			return nil
@@ -55,18 +57,10 @@ func NewDockerContainer(opts ...Option) *Container {
 	}
 
 	// Automatically convert the ports to exposed ports and host binding ports
-	if c.portBindings == nil {
-		c.portBindings = make(map[docker.Port][]docker.PortBinding)
-	}
-	if c.exposedPorts == nil {
-		c.exposedPorts = make(map[docker.Port]struct{})
-	}
-
 	if len(c.ports) > 0 {
-		c.exposedPorts = make(map[docker.Port]struct{})
 		for _, port := range c.ports {
-			c.AddHostPortBinding(port, port)
-			c.ExposePort(port)
+			c.addHostPortBinding(port, port)
+			c.exposePort(port)
 		}
 	}
 
@@ -120,11 +114,11 @@ func (c *Container) Start() error {
 	return err
 }
 
-func (c *Container) ExposePort(port string) {
+func (c *Container) exposePort(port string) {
 	c.exposedPorts[docker.Port(port)] = struct{}{}
 }
 
-func (c *Container) AddHostPortBinding(containerPort string, hostPort string) {
+func (c *Container) addHostPortBinding(containerPort string, hostPort string) {
 	c.portBindings[docker.Port(containerPort)] = []docker.PortBinding{
 		{
 			HostIP:   "0.0.0.0",

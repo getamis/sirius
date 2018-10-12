@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/getamis/sirius/database/mysql"
@@ -26,11 +27,21 @@ import (
 
 type MySQLContainer struct {
 	dockerContainer *Container
+	MySQLOptions    MySQLOptions
+	Started         bool
 	URL             string
 }
 
 func (container *MySQLContainer) Start() error {
-	return container.dockerContainer.Start()
+	container.Started = true
+	err := container.dockerContainer.Start()
+	if err != nil {
+		return err
+	}
+
+	connectionString, _ := ToMySQLConnectionString(container.dockerContainer, container.MySQLOptions)
+	container.URL = connectionString
+	return nil
 }
 
 func (container *MySQLContainer) Suspend() error {
@@ -38,7 +49,28 @@ func (container *MySQLContainer) Suspend() error {
 }
 
 func (container *MySQLContainer) Stop() error {
+	container.Started = false
 	return container.dockerContainer.Stop()
+}
+
+func (container *MySQLContainer) Teardown() error {
+	if container.dockerContainer != nil && container.Started {
+		container.Started = false
+		return container.dockerContainer.Stop()
+	}
+
+	db, err := sql.Open("mysql", container.URL)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	sql := fmt.Sprintf("DROP DATABASE IF EXISTS %s", container.MySQLOptions.Database)
+	if _, err = db.Exec(sql); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // MigrationOptions for mysql migration container
@@ -73,7 +105,7 @@ func RunMigrationContainer(options MigrationOptions) error {
 			[]string{
 				"RAILS_ENV=customized",
 				fmt.Sprintf("HOST=%s", options.MySQLOptions.Host),
-				fmt.Sprintf("PORT=%d", options.MySQLOptions.Port),
+				fmt.Sprintf("PORT=%s", options.MySQLOptions.Port),
 				fmt.Sprintf("DATABASE=%s", options.MySQLOptions.Database),
 				fmt.Sprintf("USERNAME=%s", options.MySQLOptions.Username),
 				fmt.Sprintf("PASSWORD=%s", options.MySQLOptions.Password),
@@ -99,7 +131,7 @@ type MySQLOptions struct {
 	// The following options are used in the connection string and the mysql server container itself.
 	Username string
 	Password string
-	Port     int
+	Port     string
 	Database string
 
 	// The host address that will be used to build the connection string
@@ -111,14 +143,14 @@ var DefaultMySQLOptions = MySQLOptions{
 	Password: "my-secret-pw",
 
 	// Currently the port will be published to the host.
-	Port: 3306,
+	Port: "3307",
 
 	// The db we want to run the test
 	Database: "db0",
 
 	// the mysql host to be connected from the client
 	// if we're running test on the host, we might need to connect to the mysql
-	// server via 127.0.0.1:3306. however if we want to run the test inside the container,
+	// server via 127.0.0.1:3307. however if we want to run the test inside the container,
 	// we need to inspect the IP of the container
 	Host: "127.0.0.1",
 }
@@ -133,29 +165,15 @@ func IsInsideContainer() bool {
 	return false
 }
 
-func NewMySQLHealthChecker(options MySQLOptions) healthChecker {
+func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 	return func(c *Container) error {
-		// By default we will use the host that is defined in the mysql options
-		var host string = options.Host
-
-		// If we're inside the container, we need to override the hostname
-		// defined in the option
-		if IsInsideContainer() {
-			inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
-			if err != nil {
-				return err
-			}
-			host = inspectedContainer.NetworkSettings.IPAddress
+		// We use this connection string to verify the mysql container is ready.
+		connectionString, err := ToMySQLConnectionString(c, options)
+		if err != nil {
+			return err
 		}
 
-		// We use this connection string to verify the mysql container is ready.
-		connectionString, _ := mysql.ToConnectionString(
-			mysql.Connector(mysql.DefaultProtocol, host, fmt.Sprintf("%d", options.Port)),
-			mysql.Database(options.Database),
-			mysql.UserInfo(options.Username, options.Password),
-		)
-
-		return retry(10, 10*time.Second, func() error {
+		return retry(10, 3*time.Second, func() error {
 			db, err := sql.Open("mysql", connectionString)
 			if err != nil {
 				return err
@@ -167,12 +185,137 @@ func NewMySQLHealthChecker(options MySQLOptions) healthChecker {
 	}
 }
 
+func ToMySQLConnectionString(c *Container, options MySQLOptions) (string, error) {
+	// By default we will use the host that is defined in the mysql options
+	var host string = options.Host
+
+	// If we're inside the container, we need to override the hostname
+	// defined in the option
+	if IsInsideContainer() {
+		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
+		if err != nil {
+			return "", err
+		}
+		host = inspectedContainer.NetworkSettings.IPAddress
+	}
+
+	// We use this connection string to verify the mysql container is ready.
+	return mysql.ToConnectionString(
+		mysql.Connector(mysql.DefaultProtocol, host, options.Port),
+		mysql.Database(options.Database),
+		mysql.UserInfo(options.Username, options.Password),
+	)
+}
+
+func LoadMySQLOptions() MySQLOptions {
+	options := DefaultMySQLOptions
+
+	// mysql container exposes port at 3306, if we're inside a container, we
+	// need to use 3306 to connect to the mysql server.
+	if IsInsideContainer() {
+		options.Port = "3306"
+	}
+
+	if host, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
+		options.Host = host
+	}
+	if val, ok := os.LookupEnv("TEST_MYSQL_PORT"); ok {
+		options.Port = val
+	}
+
+	if val, ok := os.LookupEnv("TEST_MYSQL_DATABASE"); ok {
+		options.Database = val
+	}
+
+	if val, ok := os.LookupEnv("TEST_MYSQL_USERNAME"); ok {
+		options.Username = val
+	}
+
+	if val, ok := os.LookupEnv("TEST_MYSQL_PASSWORD"); ok {
+		options.Password = val
+	}
+	return options
+}
+
+func createMySQLDatabase(options MySQLOptions) error {
+	// We must pass mysql.Database to the connection string function, if we
+	// don't, the connection string will use "db" as the default database.
+	// see https://maicoin.slack.com/archives/G0PKWFTNY/p1539335776000100 for more details.
+	connectionString, err := mysql.ToConnectionString(
+		mysql.Connector(mysql.DefaultProtocol, options.Host, options.Port),
+		mysql.Database(""),
+		mysql.UserInfo(options.Username, options.Password),
+	)
+	if err != nil {
+		return err
+	}
+
+	db, err := sql.Open("mysql", connectionString)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	sql := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", options.Database)
+	_, err = db.Exec(sql)
+	return err
+}
+
+// setup the mysql connection
+// if TEST_MYSQL_HOST is defined, then we will use the connection directly.
+// if not, a mysql container will be started
+func SetupMySQL(t *testing.T) (*MySQLContainer, error) {
+	options := LoadMySQLOptions()
+	if _, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
+
+		connectionString, err := mysql.ToConnectionString(
+			mysql.Connector(mysql.DefaultProtocol, options.Host, options.Port),
+			mysql.Database(options.Database),
+			mysql.UserInfo(options.Username, options.Password),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to create mysql connection string: %v", err)
+		}
+
+		if err := createMySQLDatabase(options); err != nil {
+			return nil, fmt.Errorf("Failed to create mysql database: %v", err)
+		}
+
+		return &MySQLContainer{
+			MySQLOptions: options,
+			URL:          connectionString,
+		}, nil
+	}
+
+	container, err := NewMySQLContainer(options)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := container.Start(); err != nil {
+		return container, err
+	}
+
+	return container, nil
+}
+
 func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQLContainer, error) {
 	// Once the mysql container is ready, we will create the database if it does not exist.
 	checker := NewMySQLHealthChecker(options)
 
+	// In order to let the tests connect to the mysql server, we need to
+	// publish the container port 3306 to the host port 3307 only when we're on the host
+	if IsInsideContainer() {
+		containerOptions = append(containerOptions, ExposePorts("3306"))
+	} else {
+		// mysql container port always expose the server port on 3306
+		containerOptions = append(containerOptions, ExposePorts("3306"))
+		containerOptions = append(containerOptions, HostPortBindings(PortBinding{"3306/tcp", options.Port}))
+	}
+
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
+		MySQLOptions: options,
 		dockerContainer: NewDockerContainer(
 			// this is to keep some flexibility for passing extra container options..
 			// however if we literally use "..." in the method call, an error
@@ -180,7 +323,6 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 			append([]Option{
 				ImageRepository("mysql"),
 				ImageTag("5.7"),
-				Ports(options.Port),
 				DockerEnv(
 					[]string{
 						fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", options.Password),
@@ -192,6 +334,13 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 		),
 	}
 
+	// please note that: in order to get the correct container address, the
+	// connection string will be updated when the container is started.
+	connectionString, _ := mysql.ToConnectionString(
+		mysql.Connector(mysql.DefaultProtocol, options.Host, options.Port),
+		mysql.Database(options.Database),
+		mysql.UserInfo(options.Username, options.Password),
+	)
 	container.URL = connectionString
 	return container, nil
 }

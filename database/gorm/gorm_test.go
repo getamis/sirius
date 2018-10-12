@@ -59,8 +59,12 @@ var _ = Describe("Test GORM", func() {
 })
 
 var _ = BeforeSuite(func() {
-	mySQLContainer, _ = test.NewMySQLContainer(test.DefaultMySQLOptions)
-	mySQLContainer.Start()
+	var err error
+	options := test.LoadMySQLOptions()
+	mySQLContainer, err = test.NewMySQLContainer(options)
+	Expect(err).Should(BeNil(), "mysql container should be created")
+	err = mySQLContainer.Start()
+	Expect(err).Should(BeNil(), "mysql container should be started")
 })
 
 var _ = AfterSuite(func() {

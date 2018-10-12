@@ -15,6 +15,7 @@
 package test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -23,13 +24,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestMySQLSetupAndTeardown(t *testing.T) {
+	mysql, err := SetupMySQL(t)
+	assert.NoError(t, err, "mysql connection handle should be created.")
+	assert.NotNil(t, mysql, "the mysql container should be returned.")
+
+	db, err := gorm.Open("mysql", mysql.URL)
+	assert.NoError(t, err, "mysql connection should work")
+	db.Close()
+
+	err = mysql.Teardown()
+	assert.NoError(t, err, "mysql connection handle should be torn down.")
+}
+
 func TestMySQLContainer(t *testing.T) {
-	container, _ := NewMySQLContainer(DefaultMySQLOptions)
+	if _, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
+		t.Skip("mysql container test is ignored when mysql host is enabled.")
+	}
+
+	options := LoadMySQLOptions()
+
+	container, err := NewMySQLContainer(options)
+	assert.NoError(t, err, "mysql container should be created.")
 	assert.NotNil(t, container)
-	assert.NoError(t, container.Start())
+	assert.NoError(t, container.Start(), "mysql container should be started")
 
 	db, err := gorm.Open("mysql", container.URL)
-	assert.NoError(t, err, "should be no error")
+	assert.NoError(t, err, "mysql connection should work")
 	db.Close()
 
 	// stop MySQL
@@ -47,6 +68,7 @@ func TestMySQLContainer(t *testing.T) {
 	// close MySQL
 	assert.NoError(t, container.Stop())
 	time.Sleep(100 * time.Millisecond)
+
 	_, err = gorm.Open("mysql", container.URL)
 	assert.Error(t, err, "should got error")
 }

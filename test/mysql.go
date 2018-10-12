@@ -247,6 +247,11 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 	// Once the mysql container is ready, we will create the database if it does not exist.
 	checker := NewMySQLHealthChecker(options)
 
+	// we should publish the ports only when we're on the host
+	if !IsInsideContainer() {
+		containerOptions = append(containerOptions, Ports(options.Port))
+	}
+
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
 		dockerContainer: NewDockerContainer(
@@ -256,7 +261,6 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 			append([]Option{
 				ImageRepository("mysql"),
 				ImageTag("5.7"),
-				Ports(options.Port),
 				DockerEnv(
 					[]string{
 						fmt.Sprintf("MYSQL_ROOT_PASSWORD=%s", options.Password),

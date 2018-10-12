@@ -28,12 +28,16 @@ type Container struct {
 	name             string
 	imageRespository string
 	imageTag         string
-	ports            []string
-	runArgs          []string
-	envs             []string
-	container        *docker.Container
-	healthChecker    ContainerCallback
-	initializer      ContainerCallback
+
+	portBindings map[docker.Port][]docker.PortBinding
+	exposedPorts map[docker.Port]struct{}
+
+	ports         []string
+	runArgs       []string
+	envs          []string
+	container     *docker.Container
+	healthChecker ContainerCallback
+	initializer   ContainerCallback
 }
 
 type ContainerCallback func(*Container) error
@@ -50,19 +54,19 @@ func NewDockerContainer(opts ...Option) *Container {
 		opt(c)
 	}
 
-	var portBindings map[docker.Port][]docker.PortBinding = nil
-	var exposedPorts map[docker.Port]struct{} = nil
+	// Automatically convert the ports to exposed ports and host binding ports
+	if c.portBindings == nil {
+		c.portBindings = make(map[docker.Port][]docker.PortBinding)
+	}
+	if c.exposedPorts == nil {
+		c.exposedPorts = make(map[docker.Port]struct{})
+	}
+
 	if len(c.ports) > 0 {
-		exposedPorts = make(map[docker.Port]struct{})
-		portBindings = make(map[docker.Port][]docker.PortBinding)
+		c.exposedPorts = make(map[docker.Port]struct{})
 		for _, port := range c.ports {
-			portBindings[docker.Port(port)] = []docker.PortBinding{
-				{
-					HostIP:   "0.0.0.0",
-					HostPort: port,
-				},
-			}
-			exposedPorts[docker.Port(port)] = struct{}{}
+			c.AddHostPortBinding(port, port)
+			c.ExposePort(port)
 		}
 	}
 
@@ -72,11 +76,11 @@ func NewDockerContainer(opts ...Option) *Container {
 		Config: &docker.Config{
 			Image:        c.imageRespository + ":" + c.imageTag,
 			Cmd:          c.runArgs,
-			ExposedPorts: exposedPorts,
+			ExposedPorts: c.exposedPorts,
 			Env:          c.envs,
 		},
 		HostConfig: &docker.HostConfig{
-			PortBindings: portBindings,
+			PortBindings: c.portBindings,
 		},
 		Context: context.TODO(),
 	})
@@ -114,6 +118,19 @@ func (c *Container) Start() error {
 	}()
 	err = c.healthChecker(c)
 	return err
+}
+
+func (c *Container) ExposePort(port string) {
+	c.exposedPorts[docker.Port(port)] = struct{}{}
+}
+
+func (c *Container) AddHostPortBinding(containerPort string, hostPort string) {
+	c.portBindings[docker.Port(containerPort)] = []docker.PortBinding{
+		{
+			HostIP:   "0.0.0.0",
+			HostPort: hostPort,
+		},
+	}
 }
 
 func (c *Container) Suspend() error {

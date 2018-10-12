@@ -16,17 +16,13 @@ package test
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/getamis/sirius/database/mysql"
 	"github.com/getamis/sirius/log"
 )
-
-var ErrMySQLNotStarted = errors.New("MySQL container is not started.")
 
 type MySQLContainer struct {
 	dockerContainer *Container
@@ -53,7 +49,7 @@ func (container *MySQLContainer) Teardown() error {
 		container.Started = false
 		return container.dockerContainer.Stop()
 	}
-	return ErrMySQLNotStarted
+	return nil
 }
 
 // MigrationOptions for mysql migration container
@@ -88,7 +84,7 @@ func RunMigrationContainer(options MigrationOptions) error {
 			[]string{
 				"RAILS_ENV=customized",
 				fmt.Sprintf("HOST=%s", options.MySQLOptions.Host),
-				fmt.Sprintf("PORT=%d", options.MySQLOptions.Port),
+				fmt.Sprintf("PORT=%s", options.MySQLOptions.Port),
 				fmt.Sprintf("DATABASE=%s", options.MySQLOptions.Database),
 				fmt.Sprintf("USERNAME=%s", options.MySQLOptions.Username),
 				fmt.Sprintf("PASSWORD=%s", options.MySQLOptions.Password),
@@ -114,7 +110,7 @@ type MySQLOptions struct {
 	// The following options are used in the connection string and the mysql server container itself.
 	Username string
 	Password string
-	Port     int
+	Port     string
 	Database string
 
 	// The host address that will be used to build the connection string
@@ -126,14 +122,14 @@ var DefaultMySQLOptions = MySQLOptions{
 	Password: "my-secret-pw",
 
 	// Currently the port will be published to the host.
-	Port: 3306,
+	Port: "3307",
 
 	// The db we want to run the test
 	Database: "db0",
 
 	// the mysql host to be connected from the client
 	// if we're running test on the host, we might need to connect to the mysql
-	// server via 127.0.0.1:3306. however if we want to run the test inside the container,
+	// server via 127.0.0.1:3307. however if we want to run the test inside the container,
 	// we need to inspect the IP of the container
 	Host: "127.0.0.1",
 }
@@ -184,7 +180,7 @@ func ToMySQLConnectionString(c *Container, options MySQLOptions) (string, error)
 
 	// We use this connection string to verify the mysql container is ready.
 	return mysql.ToConnectionString(
-		mysql.Connector(mysql.DefaultProtocol, host, fmt.Sprintf("%d", options.Port)),
+		mysql.Connector(mysql.DefaultProtocol, host, options.Port),
 		mysql.Database(options.Database),
 		mysql.UserInfo(options.Username, options.Password),
 	)
@@ -197,11 +193,7 @@ func SetupMySQL() (*MySQLContainer, error) {
 	if host, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
 		port := DefaultMySQLOptions.Port
 		if val, ok := os.LookupEnv("TEST_MYSQL_PORT"); ok {
-			if p, err := strconv.Atoi(val); err != nil {
-				return nil, err
-			} else {
-				port = p
-			}
+			port = val
 		}
 
 		database := DefaultMySQLOptions.Database
@@ -247,11 +239,6 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 	// Once the mysql container is ready, we will create the database if it does not exist.
 	checker := NewMySQLHealthChecker(options)
 
-	// we should publish the ports only when we're on the host
-	if !IsInsideContainer() {
-		containerOptions = append(containerOptions, Ports(options.Port))
-	}
-
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
 		dockerContainer: NewDockerContainer(
@@ -272,9 +259,15 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 		),
 	}
 
-	// FIXME
+	// we should publish the ports only when we're on the host
+	if !IsInsideContainer() {
+		// mysql container port always expose the server port on 3306
+		container.dockerContainer.AddHostPortBinding("3306", options.Port)
+	}
+
+	// FIXME: the connection string should depend on the "IsInsideContainer" condition
 	connectionString, _ := mysql.ToConnectionString(
-		mysql.Connector(mysql.DefaultProtocol, options.Host, fmt.Sprintf("%d", options.Port)),
+		mysql.Connector(mysql.DefaultProtocol, options.Host, options.Port),
 		mysql.Database(options.Database),
 		mysql.UserInfo(options.Username, options.Password),
 	)

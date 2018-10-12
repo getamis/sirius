@@ -15,6 +15,7 @@
 package test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -24,14 +25,23 @@ import (
 )
 
 func TestMySQLSetupAndTeardown(t *testing.T) {
-	mysql, err := SetupMySQL()
+	mysql, err := SetupMySQL(t)
 	assert.NoError(t, err, "mysql connection handle should be created.")
+	assert.NotNil(t, mysql, "the mysql container should be returned.")
+
+	db, err := gorm.Open("mysql", mysql.URL)
+	assert.NoError(t, err, "mysql connection should work")
+	db.Close()
 
 	err = mysql.Teardown()
 	assert.NoError(t, err, "mysql connection handle should be torn down.")
 }
 
 func TestMySQLContainer(t *testing.T) {
+	if _, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
+		t.Skip("mysql container test is ignored when mysql host is enabled.")
+	}
+
 	options := LoadMySQLOptions()
 
 	container, err := NewMySQLContainer(options)

@@ -133,17 +133,8 @@ func IsInsideContainer() bool {
 	return false
 }
 
-func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQLContainer, error) {
-
-	// We use this connection string to verify the mysql container is ready.
-	connectionString, _ := mysql.ToConnectionString(
-		mysql.Connector(mysql.DefaultProtocol, options.Host, fmt.Sprintf("%d", options.Port)),
-		mysql.Database(options.Database),
-		mysql.UserInfo(options.Username, options.Password),
-	)
-
-	// Once the mysql container is ready, we will create the database if it does not exist.
-	checker := func(c *Container) error {
+func NewMySQLHealthChecker(connectionString string) Option {
+	return func(c *Container) error {
 		return retry(10, 10*time.Second, func() error {
 			db, err := sql.Open("mysql", connectionString)
 			if err != nil {
@@ -154,6 +145,18 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 			return err
 		})
 	}
+}
+
+func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQLContainer, error) {
+	// We use this connection string to verify the mysql container is ready.
+	connectionString, _ := mysql.ToConnectionString(
+		mysql.Connector(mysql.DefaultProtocol, options.Host, fmt.Sprintf("%d", options.Port)),
+		mysql.Database(options.Database),
+		mysql.UserInfo(options.Username, options.Password),
+	)
+
+	// Once the mysql container is ready, we will create the database if it does not exist.
+	checker := NewMySQLHealthChecker(connectionString)
 
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
@@ -177,6 +180,5 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 	}
 
 	container.URL = connectionString
-
 	return container, nil
 }

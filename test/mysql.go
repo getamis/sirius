@@ -98,23 +98,28 @@ func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) erro
 		options.ImageTag = "latest"
 	}
 
-	inspectedContainer, err := mysql.dockerContainer.dockerClient.InspectContainer(mysql.dockerContainer.container.ID)
-	if err != nil {
-		return err
+	if mysql.MySQLOptions.Host == "127.0.0.1" {
+		mysql.MySQLOptions.Host = "host.docker.internal"
+	} else {
+		inspectedContainer, err := mysql.dockerContainer.dockerClient.InspectContainer(mysql.dockerContainer.container.ID)
+		if err != nil {
+			return err
+		}
+
+		// Override the mysql host because the migration needs to connect to the
+		// mysql server via the docker bridge network directly.
+		mysql.MySQLOptions.Host = inspectedContainer.NetworkSettings.IPAddress
+		mysql.MySQLOptions.Port = "3306"
 	}
 
-	// Override the mysql host because the migration needs to connect to the
-	// mysql server via the docker bridge network directly.
-	host := inspectedContainer.NetworkSettings.IPAddress
-	port := "3306"
 	container := NewDockerContainer(
 		ImageRepository(options.ImageRepository),
 		ImageTag(options.ImageTag),
 		DockerEnv(
 			[]string{
 				"RAILS_ENV=customized",
-				fmt.Sprintf("HOST=%s", host),
-				fmt.Sprintf("PORT=%s", port),
+				fmt.Sprintf("HOST=%s", mysql.MySQLOptions.Host),
+				fmt.Sprintf("PORT=%s", mysql.MySQLOptions.Port),
 				fmt.Sprintf("DATABASE=%s", mysql.MySQLOptions.Database),
 				fmt.Sprintf("USERNAME=%s", mysql.MySQLOptions.Username),
 				fmt.Sprintf("PASSWORD=%s", mysql.MySQLOptions.Password),
@@ -163,7 +168,8 @@ var DefaultMySQLOptions = MySQLOptions{
 	// if we're running test on the host, we might need to connect to the mysql
 	// server via 127.0.0.1:3307. however if we want to run the test inside the container,
 	// we need to inspect the IP of the container
-	Host: "127.0.0.1",
+	// This field will be updated when using LoadMySQLOptions
+	Host: "",
 }
 
 func IsInsideContainer() bool {
@@ -226,6 +232,8 @@ func ToMySQLConnectionString(options MySQLOptions) (string, error) {
 	)
 }
 
+// LoadMySQLOptions returns the mysql options that will be used for the test
+// cases to connect to.
 func LoadMySQLOptions() MySQLOptions {
 	options := DefaultMySQLOptions
 
@@ -233,6 +241,8 @@ func LoadMySQLOptions() MySQLOptions {
 	// need to use 3306 to connect to the mysql server.
 	if IsInsideContainer() {
 		options.Port = "3306"
+	} else {
+		options.Host = "127.0.0.1"
 	}
 
 	if host, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {

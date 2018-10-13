@@ -151,7 +151,9 @@ var DefaultMySQLOptions = MySQLOptions{
 	Username: "root",
 	Password: "my-secret-pw",
 
-	// Currently the port will be published to the host.
+	// port 3307 is used to be published on the host.
+	// the port number will be changed to 3306 when we connect to the mysql container from
+	// another container.
 	Port: "3307",
 
 	// The db we want to run the test

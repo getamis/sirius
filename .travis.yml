@@ -15,10 +15,6 @@ addons:
 before_script:
   - make deps
 
-branches:
-  only:
-    - master
-
 jobs:
   include:
     - stage: Host MySQL Test

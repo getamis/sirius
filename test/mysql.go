@@ -187,7 +187,7 @@ func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 			return err
 		}
 
-		return retry(10, 3*time.Second, func() error {
+		return retry(10, 5*time.Second, func() error {
 			db, err := sql.Open("mysql", connectionString)
 			if err != nil {
 				return err

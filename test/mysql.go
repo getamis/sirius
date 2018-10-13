@@ -106,6 +106,7 @@ func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) erro
 	// Override the mysql host because the migration needs to connect to the
 	// mysql server via the docker bridge network directly.
 	host := inspectedContainer.NetworkSettings.IPAddress
+	port := "3306"
 	container := NewDockerContainer(
 		ImageRepository(options.ImageRepository),
 		ImageTag(options.ImageTag),
@@ -113,7 +114,7 @@ func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) erro
 			[]string{
 				"RAILS_ENV=customized",
 				fmt.Sprintf("HOST=%s", host),
-				fmt.Sprintf("PORT=%s", mysql.MySQLOptions.Port),
+				fmt.Sprintf("PORT=%s", port),
 				fmt.Sprintf("DATABASE=%s", mysql.MySQLOptions.Database),
 				fmt.Sprintf("USERNAME=%s", mysql.MySQLOptions.Username),
 				fmt.Sprintf("PASSWORD=%s", mysql.MySQLOptions.Password),

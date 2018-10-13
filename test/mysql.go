@@ -275,7 +275,7 @@ func createMySQLDatabase(options MySQLOptions) error {
 // setup the mysql connection
 // if TEST_MYSQL_HOST is defined, then we will use the connection directly.
 // if not, a mysql container will be started
-func SetupMySQL(t *testing.T) (*MySQLContainer, error) {
+func SetupMySQL() (*MySQLContainer, error) {
 	options := LoadMySQLOptions()
 	if _, ok := os.LookupEnv("TEST_MYSQL_HOST"); ok {
 

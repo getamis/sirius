@@ -25,7 +25,7 @@ import (
 )
 
 func TestMySQLSetupAndTeardown(t *testing.T) {
-	mysql, err := SetupMySQL(t)
+	mysql, err := SetupMySQL()
 	assert.NoError(t, err, "mysql connection handle should be created.")
 	assert.NotNil(t, mysql, "the mysql container should be returned.")
 

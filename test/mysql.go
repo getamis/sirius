@@ -39,7 +39,10 @@ func (container *MySQLContainer) Start() error {
 		return err
 	}
 
-	connectionString, _ := ToMySQLConnectionString(container.dockerContainer, container.MySQLOptions)
+	if err := updateMySQLContainerHost(container.dockerContainer, &container.MySQLOptions); err != nil {
+		return err
+	}
+	connectionString, _ := ToMySQLConnectionString(container.MySQLOptions)
 	container.URL = connectionString
 	return nil
 }
@@ -168,7 +171,10 @@ func IsInsideContainer() bool {
 func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 	return func(c *Container) error {
 		// We use this connection string to verify the mysql container is ready.
-		connectionString, err := ToMySQLConnectionString(c, options)
+		if err := updateMySQLContainerHost(c, &options); err != nil {
+			return err
+		}
+		connectionString, err := ToMySQLConnectionString(options)
 		if err != nil {
 			return err
 		}
@@ -185,23 +191,28 @@ func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 	}
 }
 
-func ToMySQLConnectionString(c *Container, options MySQLOptions) (string, error) {
-	// By default we will use the host that is defined in the mysql options
-	var host string = options.Host
-
-	// If we're inside the container, we need to override the hostname
-	// defined in the option
+// updateMySQLContainerHost updates the mysql host field according to the current environment
+//
+// If we're inside the container, we need to override the hostname
+// defined in the option.
+// If not, we should use the default value 127.0.0.1 because we will need to connect to the host port.
+// please note that the TEST_MYSQL_HOST can be overridden.
+func updateMySQLContainerHost(c *Container, options *MySQLOptions) error {
 	if IsInsideContainer() {
 		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
 		if err != nil {
-			return "", err
+			return err
 		}
-		host = inspectedContainer.NetworkSettings.IPAddress
+		options.Host = inspectedContainer.NetworkSettings.IPAddress
 	}
+	return nil
+}
 
+// Convert mysql options to mysql string
+func ToMySQLConnectionString(options MySQLOptions) (string, error) {
 	// We use this connection string to verify the mysql container is ready.
 	return mysql.ToConnectionString(
-		mysql.Connector(mysql.DefaultProtocol, host, options.Port),
+		mysql.Connector(mysql.DefaultProtocol, options.Host, options.Port),
 		mysql.Database(options.Database),
 		mysql.UserInfo(options.Username, options.Password),
 	)
@@ -336,11 +347,7 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 
 	// please note that: in order to get the correct container address, the
 	// connection string will be updated when the container is started.
-	connectionString, _ := mysql.ToConnectionString(
-		mysql.Connector(mysql.DefaultProtocol, options.Host, options.Port),
-		mysql.Database(options.Database),
-		mysql.UserInfo(options.Username, options.Password),
-	)
+	connectionString, _ := ToMySQLConnectionString(options)
 	container.URL = connectionString
 	return container, nil
 }

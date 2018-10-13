@@ -24,6 +24,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRunMigration(t *testing.T) {
+	mysql, err := SetupMySQL()
+	assert.NoError(t, err, "mysql connection handle should be created.")
+	assert.NotNil(t, mysql, "the mysql container should be returned.")
+
+	db, err := gorm.Open("mysql", mysql.URL)
+	assert.NoError(t, err, "mysql connection should work")
+	db.Close()
+
+	if image, ok := os.LookupEnv("MIGRATION_IMAGE_REPO"); ok {
+		err = RunMigrationContainer(mysql, MigrationOptions{ImageRepository: image})
+		assert.NoError(t, err, "migration image should be executed without error.")
+	}
+
+	err = mysql.Teardown()
+	assert.NoError(t, err, "mysql connection handle should be torn down.")
+}
+
 func TestMySQLSetupAndTeardown(t *testing.T) {
 	mysql, err := SetupMySQL()
 	assert.NoError(t, err, "mysql connection handle should be created.")

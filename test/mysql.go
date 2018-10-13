@@ -18,7 +18,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"testing"
 	"time"
 
 	"github.com/getamis/sirius/database/mysql"
@@ -81,8 +80,6 @@ type MigrationOptions struct {
 	ImageRepository string
 	ImageTag        string
 
-	MySQLOptions MySQLOptions
-
 	// this command will override the default command.
 	// "bundle" "exec" "rake" "db:migrate"
 	Command []string
@@ -90,7 +87,7 @@ type MigrationOptions struct {
 
 // RunMigrationContainer creates the migration container and connects to the
 // mysql database to run the migration scripts.
-func RunMigrationContainer(options MigrationOptions) error {
+func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) error {
 	// the default command
 	command := []string{"bundle", "exec", "rake", "db:migrate"}
 	if len(options.Command) > 0 {
@@ -101,17 +98,25 @@ func RunMigrationContainer(options MigrationOptions) error {
 		options.ImageTag = "latest"
 	}
 
+	inspectedContainer, err := mysql.dockerContainer.dockerClient.InspectContainer(mysql.dockerContainer.container.ID)
+	if err != nil {
+		return err
+	}
+
+	// Override the mysql host because the migration needs to connect to the
+	// mysql server via the docker bridge network directly.
+	host := inspectedContainer.NetworkSettings.IPAddress
 	container := NewDockerContainer(
 		ImageRepository(options.ImageRepository),
 		ImageTag(options.ImageTag),
 		DockerEnv(
 			[]string{
 				"RAILS_ENV=customized",
-				fmt.Sprintf("HOST=%s", options.MySQLOptions.Host),
-				fmt.Sprintf("PORT=%s", options.MySQLOptions.Port),
-				fmt.Sprintf("DATABASE=%s", options.MySQLOptions.Database),
-				fmt.Sprintf("USERNAME=%s", options.MySQLOptions.Username),
-				fmt.Sprintf("PASSWORD=%s", options.MySQLOptions.Password),
+				fmt.Sprintf("HOST=%s", host),
+				fmt.Sprintf("PORT=%s", mysql.MySQLOptions.Port),
+				fmt.Sprintf("DATABASE=%s", mysql.MySQLOptions.Database),
+				fmt.Sprintf("USERNAME=%s", mysql.MySQLOptions.Username),
+				fmt.Sprintf("PASSWORD=%s", mysql.MySQLOptions.Password),
 			},
 		),
 		RunOptions(command),

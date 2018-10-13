@@ -98,9 +98,16 @@ func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) erro
 		options.ImageTag = "latest"
 	}
 
+	// host = 127.0.0.1 means we run a mysql server on host,
+	// however the migration container needs to connect to the host from the container.
+	// so that we need to override the host name
+	// please note that is only supported on OS X
+	//
+	// when mysql.dockerContainer is defined, which means we've created the
+	// mysql container in the runtime, we need to inspect the address of the docker container.
 	if mysql.MySQLOptions.Host == "127.0.0.1" {
 		mysql.MySQLOptions.Host = "host.docker.internal"
-	} else {
+	} else if mysql.dockerContainer != nil {
 		inspectedContainer, err := mysql.dockerContainer.dockerClient.InspectContainer(mysql.dockerContainer.container.ID)
 		if err != nil {
 			return err

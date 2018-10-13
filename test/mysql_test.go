@@ -25,6 +25,10 @@ import (
 )
 
 func TestRunMigration(t *testing.T) {
+	if _, ok := os.LookupEnv("MIGRATION_IMAGE_REPO"); !ok {
+		t.Skip("migration image repo is not defined.")
+	}
+
 	mysql, err := SetupMySQL()
 	assert.NoError(t, err, "mysql connection handle should be created.")
 	assert.NotNil(t, mysql, "the mysql container should be returned.")

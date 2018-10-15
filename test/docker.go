@@ -109,7 +109,7 @@ func (c *Container) Start() error {
 		return err
 	}
 
-	defer log.Debug("IPAddress after start", "ip", c.IPAddress())
+	defer log.Debug("Container IP address", "container ID", c.container.ID, "ip", c.IPAddress())
 
 	c.Started = true
 	defer func() {

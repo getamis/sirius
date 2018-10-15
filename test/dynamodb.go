@@ -46,6 +46,20 @@ type DynamodbContainer struct {
 	Endpoint string
 }
 
+func (c *DynamodbContainer) Start() error {
+	err := c.Container.Start()
+	if err != nil {
+		return err
+	}
+
+	if err := c.Options.UpdateHostFromContainer(c.Container); err != nil {
+		return err
+	}
+
+	c.Endpoint = c.Options.Endpoint()
+	return nil
+}
+
 // LoadDynamodbOptions returns the dynamodb options that will be used for the test
 // cases to connect to.
 func LoadDynamodbOptions() DynamodbOptions {

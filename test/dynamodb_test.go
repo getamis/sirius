@@ -20,10 +20,8 @@ func TestNewDynamodbContainer(t *testing.T) {
 	err = container.Start()
 	assert.NoError(t, err)
 
-	if IsInsideContainer() {
-		err = options.UpdateHostFromContainer(container)
-		assert.NoError(t, err)
-	}
+	err = options.UpdateHostFromContainer(container)
+	assert.NoError(t, err)
 
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region:      aws.String(options.Region),

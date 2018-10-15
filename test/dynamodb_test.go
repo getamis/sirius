@@ -29,6 +29,6 @@ func TestNewDynamodbContainer(t *testing.T) {
 	ddb := dynamodb.New(sess)
 	assert.NotNil(t, ddb)
 
-	assert.NoError(t, container.Stop())
-
+	err = container.Teardown()
+	assert.NoError(t, err)
 }

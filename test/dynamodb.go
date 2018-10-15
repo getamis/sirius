@@ -25,6 +25,14 @@ func (o DynamodbOptions) Endpoint() string {
 	return "http://" + net.JoinHostPort(o.Host, o.Port)
 }
 
+func (o DynamodbOptions) MustNewSession() *session.Session {
+	return session.Must(session.NewSession(&aws.Config{
+		Region:      aws.String(o.Region),
+		Endpoint:    aws.String(o.Endpoint()),
+		Credentials: credentials.NewStaticCredentials("FAKE", "FAKE", "FAKE"),
+	}))
+}
+
 // UpdateHostFromContainer updates the mysql host field according to the current environment
 //
 // If we're inside the container, we need to override the hostname
@@ -59,6 +67,35 @@ func (c *DynamodbContainer) Start() error {
 	}
 
 	c.Endpoint = c.Options.Endpoint()
+	return nil
+}
+
+func (container *DynamodbContainer) Teardown() error {
+	if container.Container != nil && container.Container.Started {
+		return container.Container.Stop()
+	}
+
+	sess := container.Options.MustNewSession()
+	svc := dynamodb.New(sess)
+
+	input := &dynamodb.ListTablesInput{}
+	result, err := svc.ListTables(input)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range result.TableNames {
+		log.Debug("Deleting dynamodb table", "table", *n)
+		out, err := svc.DeleteTable(&dynamodb.DeleteTableInput{
+			TableName: n,
+		})
+		if err != nil {
+			log.Error("Failed to delete dynamodb table", "err", err)
+		} else {
+			log.Debug("Deleted", "output", out.String())
+		}
+	}
+
 	return nil
 }
 
@@ -112,11 +149,7 @@ func NewDynamodbHealthChecker(options DynamodbOptions) ContainerCallback {
 
 		return retry(10, 1*time.Second, func() error {
 			log.Debug("Checking dynamodb status", "endpoint", options.Endpoint(), "region", options.Region)
-			sess := session.Must(session.NewSession(&aws.Config{
-				Region:      aws.String(options.Region),
-				Endpoint:    aws.String(options.Endpoint()),
-				Credentials: credentials.NewStaticCredentials("FAKE", "FAKE", "FAKE"),
-			}))
+			sess := options.MustNewSession()
 			svc := dynamodb.New(sess)
 			input := &dynamodb.ListTablesInput{}
 			_, err := svc.ListTables(input)

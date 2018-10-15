@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/getamis/sirius/database/mysql"
+	"github.com/getamis/sirius/log"
 )
 
 type MySQLOptions struct {
@@ -133,6 +134,7 @@ func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 		}
 
 		return retry(10, 5*time.Second, func() error {
+			log.Debug("Checking mysql status", "conn", connectionString)
 			db, err := sql.Open("mysql", connectionString)
 			if err != nil {
 				return err

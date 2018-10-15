@@ -9,6 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+
+	"github.com/getamis/sirius/log"
 )
 
 const DefaultDynamodbPort = "8000"
@@ -109,6 +111,7 @@ func NewDynamodbHealthChecker(options DynamodbOptions) ContainerCallback {
 		}
 
 		return retry(10, 1*time.Second, func() error {
+			log.Debug("Checking dynamodb status", "endpoint", options.Endpoint(), "region", options.Region)
 			sess := session.Must(session.NewSession(&aws.Config{
 				Region:      aws.String(options.Region),
 				Endpoint:    aws.String(options.Endpoint()),

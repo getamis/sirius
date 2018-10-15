@@ -24,20 +24,20 @@ import (
 )
 
 type MySQLContainer struct {
-	dockerContainer *Container
-	MySQLOptions    MySQLOptions
-	Started         bool
-	URL             string
+	*Container
+	MySQLOptions MySQLOptions
+	Started      bool
+	URL          string
 }
 
 func (container *MySQLContainer) Start() error {
 	container.Started = true
-	err := container.dockerContainer.Start()
+	err := container.Container.Start()
 	if err != nil {
 		return err
 	}
 
-	if err := updateMySQLContainerHost(container.dockerContainer, &container.MySQLOptions); err != nil {
+	if err := updateMySQLContainerHost(container.Container, &container.MySQLOptions); err != nil {
 		return err
 	}
 	connectionString, _ := ToMySQLConnectionString(container.MySQLOptions)
@@ -45,19 +45,10 @@ func (container *MySQLContainer) Start() error {
 	return nil
 }
 
-func (container *MySQLContainer) Suspend() error {
-	return container.dockerContainer.Suspend()
-}
-
-func (container *MySQLContainer) Stop() error {
-	container.Started = false
-	return container.dockerContainer.Stop()
-}
-
 func (container *MySQLContainer) Teardown() error {
-	if container.dockerContainer != nil && container.Started {
+	if container.Container != nil && container.Started {
 		container.Started = false
-		return container.dockerContainer.Stop()
+		return container.Container.Stop()
 	}
 
 	db, err := sql.Open("mysql", container.URL)
@@ -278,7 +269,7 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
 		MySQLOptions: options,
-		dockerContainer: NewDockerContainer(
+		Container: NewDockerContainer(
 			// this is to keep some flexibility for passing extra container options..
 			// however if we literally use "..." in the method call, an error
 			// "too many arguments" will raise.

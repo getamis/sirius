@@ -24,7 +24,9 @@ import (
 )
 
 type Container struct {
-	dockerClient     *docker.Client
+	dockerClient *docker.Client
+	Started      bool
+
 	name             string
 	imageRespository string
 	imageTag         string
@@ -104,7 +106,7 @@ func (c *Container) Start() error {
 	if err != nil {
 		return err
 	}
-
+	c.Started = true
 	defer func() {
 		if c.initializer != nil {
 			err = c.initializer(c)
@@ -128,6 +130,9 @@ func (c *Container) addHostPortBinding(containerPort string, hostPort string) {
 }
 
 func (c *Container) Suspend() error {
+	defer func() {
+		c.Started = false
+	}()
 	return c.dockerClient.StopContainer(c.container.ID, 0)
 }
 

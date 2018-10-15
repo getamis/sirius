@@ -34,12 +34,12 @@ func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) erro
 	// so that we need to override the host name
 	// please note that is only supported on OS X
 	//
-	// when mysql.dockerContainer is defined, which means we've created the
+	// when mysql.Container is defined, which means we've created the
 	// mysql container in the runtime, we need to inspect the address of the docker container.
 	if mysql.MySQLOptions.Host == "127.0.0.1" {
 		mysql.MySQLOptions.Host = "host.docker.internal"
-	} else if mysql.dockerContainer != nil {
-		inspectedContainer, err := mysql.dockerContainer.dockerClient.InspectContainer(mysql.dockerContainer.container.ID)
+	} else if mysql.Container != nil {
+		inspectedContainer, err := mysql.Container.dockerClient.InspectContainer(mysql.Container.container.ID)
 		if err != nil {
 			return err
 		}

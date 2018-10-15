@@ -42,7 +42,7 @@ func SetupDynamodb() (*DynamodbContainer, error) {
 		return &DynamodbContainer{
 			Options:  options,
 			Endpoint: "http://" + net.JoinHostPort(options.Host, options.Port),
-		}
+		}, nil
 	}
 
 	c, err := NewDynamodbContainer(options)

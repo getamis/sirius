@@ -19,8 +19,10 @@ import (
 	"fmt"
 	"os"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/getamis/sirius/crypto/rand"
+	"github.com/getamis/sirius/log"
+
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 type Container struct {
@@ -106,6 +108,9 @@ func (c *Container) Start() error {
 	if err != nil {
 		return err
 	}
+
+	defer log.Debug("IPAddress after start", "ip", c.IPAddress())
+
 	c.Started = true
 	defer func() {
 		if c.initializer != nil {
@@ -141,6 +146,20 @@ func (c *Container) Wait() error {
 	return err
 }
 
+func (c *Container) Run() error {
+	if err := c.Start(); err != nil {
+		log.Error("Failed to start container", "err", err)
+		return err
+	}
+
+	if err := c.Wait(); err != nil {
+		log.Error("Failed to wait container", "err", err)
+		return err
+	}
+
+	return c.Stop()
+}
+
 func (c *Container) Stop() error {
 	return c.dockerClient.RemoveContainer(docker.RemoveContainerOptions{
 		ID:      c.container.ID,
@@ -149,6 +168,33 @@ func (c *Container) Stop() error {
 	})
 }
 
+func (c *Container) SetHealthChecker(checker ContainerCallback) *Container {
+	c.healthChecker = checker
+	return c
+}
+
+func (c *Container) SetInitializer(initializer ContainerCallback) *Container {
+	c.initializer = initializer
+	return c
+}
+
+func (c *Container) SetEnvVars(envs []string) *Container {
+	c.envs = envs
+	return c
+}
+
+// IPAddress returns the IP adress of the container.
+func (c *Container) IPAddress() string {
+	spec, err := c.dockerClient.InspectContainer(c.container.ID)
+	if err != nil {
+		log.Error("Failed to get IPAddress", "err", err)
+		return ""
+	}
+	return spec.NetworkSettings.IPAddress
+}
+
+// generateContainerID generates the UUID for container ID instead of the
+// default name combinator
 func generateContainerID() string {
 	return rand.New(
 		rand.HexEncoder(),

@@ -36,8 +36,8 @@ func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) erro
 	//
 	// when mysql.Container is defined, which means we've created the
 	// mysql container in the runtime, we need to inspect the address of the docker container.
-	if mysql.MySQLOptions.Host == "127.0.0.1" {
-		mysql.MySQLOptions.Host = "host.docker.internal"
+	if mysql.Options.Host == "127.0.0.1" {
+		mysql.Options.Host = "host.docker.internal"
 	} else if mysql.Container != nil {
 		inspectedContainer, err := mysql.Container.dockerClient.InspectContainer(mysql.Container.container.ID)
 		if err != nil {
@@ -46,8 +46,8 @@ func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) erro
 
 		// Override the mysql host because the migration needs to connect to the
 		// mysql server via the docker bridge network directly.
-		mysql.MySQLOptions.Host = inspectedContainer.NetworkSettings.IPAddress
-		mysql.MySQLOptions.Port = "3306"
+		mysql.Options.Host = inspectedContainer.NetworkSettings.IPAddress
+		mysql.Options.Port = "3306"
 	}
 
 	container := NewDockerContainer(
@@ -56,11 +56,11 @@ func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) erro
 		DockerEnv(
 			[]string{
 				"RAILS_ENV=customized",
-				fmt.Sprintf("HOST=%s", mysql.MySQLOptions.Host),
-				fmt.Sprintf("PORT=%s", mysql.MySQLOptions.Port),
-				fmt.Sprintf("DATABASE=%s", mysql.MySQLOptions.Database),
-				fmt.Sprintf("USERNAME=%s", mysql.MySQLOptions.Username),
-				fmt.Sprintf("PASSWORD=%s", mysql.MySQLOptions.Password),
+				fmt.Sprintf("HOST=%s", mysql.Options.Host),
+				fmt.Sprintf("PORT=%s", mysql.Options.Port),
+				fmt.Sprintf("DATABASE=%s", mysql.Options.Database),
+				fmt.Sprintf("USERNAME=%s", mysql.Options.Username),
+				fmt.Sprintf("PASSWORD=%s", mysql.Options.Password),
 			},
 		),
 		RunOptions(command),

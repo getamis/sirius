@@ -23,48 +23,6 @@ import (
 	"github.com/getamis/sirius/database/mysql"
 )
 
-type MySQLContainer struct {
-	*Container
-	MySQLOptions MySQLOptions
-	Started      bool
-	URL          string
-}
-
-func (container *MySQLContainer) Start() error {
-	container.Started = true
-	err := container.Container.Start()
-	if err != nil {
-		return err
-	}
-
-	if err := updateMySQLContainerHost(container.Container, &container.MySQLOptions); err != nil {
-		return err
-	}
-	connectionString, _ := ToMySQLConnectionString(container.MySQLOptions)
-	container.URL = connectionString
-	return nil
-}
-
-func (container *MySQLContainer) Teardown() error {
-	if container.Container != nil && container.Started {
-		container.Started = false
-		return container.Container.Stop()
-	}
-
-	db, err := sql.Open("mysql", container.URL)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	sql := fmt.Sprintf("DROP DATABASE IF EXISTS %s", container.MySQLOptions.Database)
-	if _, err = db.Exec(sql); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 type MySQLOptions struct {
 	// The following options are used in the connection string and the mysql server container itself.
 	Username string
@@ -94,6 +52,45 @@ var DefaultMySQLOptions = MySQLOptions{
 	// we need to inspect the IP of the container
 	// This field will be updated when using LoadMySQLOptions
 	Host: "",
+}
+
+type MySQLContainer struct {
+	*Container
+	Options MySQLOptions
+	URL     string
+}
+
+func (container *MySQLContainer) Start() error {
+	err := container.Container.Start()
+	if err != nil {
+		return err
+	}
+
+	if err := updateMySQLContainerHost(container.Container, &container.Options); err != nil {
+		return err
+	}
+	connectionString, _ := ToMySQLConnectionString(container.Options)
+	container.URL = connectionString
+	return nil
+}
+
+func (container *MySQLContainer) Teardown() error {
+	if container.Container != nil && container.Container.Started {
+		return container.Container.Stop()
+	}
+
+	db, err := sql.Open("mysql", container.URL)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	sql := fmt.Sprintf("DROP DATABASE IF EXISTS %s", container.Options.Database)
+	if _, err = db.Exec(sql); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func IsInsideContainer() bool {
@@ -235,8 +232,8 @@ func SetupMySQL() (*MySQLContainer, error) {
 		}
 
 		return &MySQLContainer{
-			MySQLOptions: options,
-			URL:          connectionString,
+			Options: options,
+			URL:     connectionString,
 		}, nil
 	}
 
@@ -268,7 +265,7 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
-		MySQLOptions: options,
+		Options: options,
 		Container: NewDockerContainer(
 			// this is to keep some flexibility for passing extra container options..
 			// however if we literally use "..." in the method call, an error

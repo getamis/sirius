@@ -58,6 +58,7 @@ func NewDockerContainer(opts ...Option) *Container {
 	if err != nil {
 		panic(err)
 	}
+
 	c := &Container{
 		portBindings: make(map[docker.Port][]docker.PortBinding),
 		exposedPorts: make(map[docker.Port]struct{}),
@@ -79,7 +80,6 @@ func NewDockerContainer(opts ...Option) *Container {
 		}
 	}
 
-	var err error
 	c.container, err = c.dockerClient.CreateContainer(docker.CreateContainerOptions{
 		Name: c.name + generateNameSuffix(),
 		Config: &docker.Config{

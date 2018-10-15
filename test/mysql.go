@@ -34,6 +34,23 @@ type MySQLOptions struct {
 	Host string
 }
 
+// UpdateHostFromContainer updates the mysql host field according to the current environment
+//
+// If we're inside the container, we need to override the hostname
+// defined in the option.
+// If not, we should use the default value 127.0.0.1 because we will need to connect to the host port.
+// please note that the TEST_MYSQL_HOST can be overridden.
+func (o *MySQLOptions) UpdateHostFromContainer(c *Container) error {
+	if IsInsideContainer() {
+		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
+		if err != nil {
+			return err
+		}
+		o.Host = inspectedContainer.NetworkSettings.IPAddress
+	}
+	return nil
+}
+
 var DefaultMySQLOptions = MySQLOptions{
 	Username: "root",
 	Password: "my-secret-pw",
@@ -66,9 +83,10 @@ func (container *MySQLContainer) Start() error {
 		return err
 	}
 
-	if err := updateMySQLContainerHost(container.Container, &container.Options); err != nil {
+	if err := container.Options.UpdateHostFromContainer(container.Container); err != nil {
 		return err
 	}
+
 	connectionString, _ := ToMySQLConnectionString(container.Options)
 	container.URL = connectionString
 	return nil
@@ -106,7 +124,7 @@ func IsInsideContainer() bool {
 func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 	return func(c *Container) error {
 		// We use this connection string to verify the mysql container is ready.
-		if err := updateMySQLContainerHost(c, &options); err != nil {
+		if err := options.UpdateHostFromContainer(c); err != nil {
 			return err
 		}
 		connectionString, err := ToMySQLConnectionString(options)
@@ -124,23 +142,6 @@ func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 			return err
 		})
 	}
-}
-
-// updateMySQLContainerHost updates the mysql host field according to the current environment
-//
-// If we're inside the container, we need to override the hostname
-// defined in the option.
-// If not, we should use the default value 127.0.0.1 because we will need to connect to the host port.
-// please note that the TEST_MYSQL_HOST can be overridden.
-func updateMySQLContainerHost(c *Container, options *MySQLOptions) error {
-	if IsInsideContainer() {
-		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
-		if err != nil {
-			return err
-		}
-		options.Host = inspectedContainer.NetworkSettings.IPAddress
-	}
-	return nil
 }
 
 // Convert mysql options to mysql string

@@ -3,13 +3,41 @@ package test
 import (
 	"net"
 	"os"
+	"time"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
 const DefaultDynamodbPort = "8000"
 
 type DynamodbOptions struct {
-	Host string
-	Port string
+	Host   string
+	Port   string
+	Region string
+}
+
+func (o DynamodbOptions) Endpoint() string {
+	return "http://" + net.JoinHostPort(o.Host, o.Port)
+}
+
+// UpdateHostFromContainer updates the mysql host field according to the current environment
+//
+// If we're inside the container, we need to override the hostname
+// defined in the option.
+// If not, we should use the default value 127.0.0.1 because we will need to connect to the host port.
+// please note that the TEST_MYSQL_HOST can be overridden.
+func (o *DynamodbOptions) UpdateHostFromContainer(c *Container) error {
+	if IsInsideContainer() {
+		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
+		if err != nil {
+			return err
+		}
+		o.Host = inspectedContainer.NetworkSettings.IPAddress
+	}
+	return nil
 }
 
 type DynamodbContainer struct {
@@ -22,14 +50,18 @@ type DynamodbContainer struct {
 // cases to connect to.
 func LoadDynamodbOptions() DynamodbOptions {
 	options := DynamodbOptions{
-		Host: "localhost",
-		Port: DefaultDynamodbPort,
+		Host:   "localhost",
+		Port:   DefaultDynamodbPort,
+		Region: "ap-southeast-1",
 	}
 	if host, ok := os.LookupEnv("TEST_DYNAMODB_HOST"); ok {
 		options.Host = host
 	}
 	if val, ok := os.LookupEnv("TEST_DYNAMODB_PORT"); ok {
 		options.Port = val
+	}
+	if val, ok := os.LookupEnv("TEST_DYNAMODB_REGION"); ok {
+		options.Region = val
 	}
 	return options
 }
@@ -41,15 +73,45 @@ func SetupDynamodb() (*DynamodbContainer, error) {
 	if _, ok := os.LookupEnv("TEST_DYNAMODB_HOST"); ok {
 		return &DynamodbContainer{
 			Options:  options,
-			Endpoint: "http://" + net.JoinHostPort(options.Host, options.Port),
+			Endpoint: options.Endpoint(),
 		}, nil
 	}
 
 	c, err := NewDynamodbContainer(options)
+
+	if err := c.Start(); err != nil {
+		return c, err
+	}
+
 	return c, err
 }
 
+func NewDynamodbHealthChecker(options DynamodbOptions) ContainerCallback {
+	return func(c *Container) error {
+		if IsInsideContainer() {
+			if err := options.UpdateHostFromContainer(c); err != nil {
+				return err
+			}
+		}
+
+		return retry(10, 1*time.Second, func() error {
+			sess := session.Must(session.NewSession(&aws.Config{
+				Region:      aws.String(options.Region),
+				Endpoint:    aws.String(options.Endpoint()),
+				Credentials: credentials.NewStaticCredentials("FAKE", "FAKE", "FAKE"),
+			}))
+			svc := dynamodb.New(sess)
+			input := &dynamodb.ListTablesInput{}
+			_, err := svc.ListTables(input)
+			return err
+		})
+	}
+}
+
 func NewDynamodbContainer(options DynamodbOptions, containerOptions ...Option) (*DynamodbContainer, error) {
+	// Once the mysql container is ready, we will create the database if it does not exist.
+	checker := NewDynamodbHealthChecker(options)
+
 	if IsInsideContainer() {
 		containerOptions = append(containerOptions, ExposePorts(DefaultDynamodbPort))
 	} else {
@@ -70,6 +132,7 @@ func NewDynamodbContainer(options DynamodbOptions, containerOptions ...Option) (
 				ImageRepository("amazon/dynamodb-local"),
 				ImageTag("latest"),
 				DockerEnv([]string{}),
+				HealthChecker(checker),
 			}, containerOptions...)...,
 		),
 		Endpoint: "http://" + net.JoinHostPort(options.Host, options.Port),

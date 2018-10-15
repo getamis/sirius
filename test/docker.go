@@ -46,6 +46,13 @@ type Container struct {
 
 type ContainerCallback func(*Container) error
 
+func newDockerClient() (*docker.Client, error) {
+	if os.Getenv("DOCKER_MACHINE_NAME") != "" {
+		return docker.NewClientFromEnv()
+	}
+	return docker.NewClient("unix:///var/run/docker.sock")
+}
+
 func NewDockerContainer(opts ...Option) *Container {
 	client, err := newDockerClient()
 	if err != nil {
@@ -91,13 +98,6 @@ func NewDockerContainer(opts ...Option) *Container {
 	}
 
 	return c
-}
-
-func newDockerClient() (*docker.Client, error) {
-	if os.Getenv("DOCKER_MACHINE_NAME") != "" {
-		return docker.NewClientFromEnv()
-	}
-	return docker.NewClient("unix:///var/run/docker.sock")
 }
 
 func (c *Container) OnReady(initializer ContainerCallback) {

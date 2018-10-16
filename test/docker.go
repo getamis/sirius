@@ -162,6 +162,9 @@ func (c *Container) Run() error {
 }
 
 func (c *Container) Stop() error {
+	defer func() {
+		c.Started = false
+	}()
 	return c.dockerClient.RemoveContainer(docker.RemoveContainerOptions{
 		ID:      c.container.ID,
 		Force:   true,

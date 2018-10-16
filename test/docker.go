@@ -19,12 +19,16 @@ import (
 	"fmt"
 	"os"
 
-	docker "github.com/fsouza/go-dockerclient"
 	"github.com/getamis/sirius/crypto/rand"
+	"github.com/getamis/sirius/log"
+
+	docker "github.com/fsouza/go-dockerclient"
 )
 
 type Container struct {
-	dockerClient     *docker.Client
+	dockerClient *docker.Client
+	Started      bool
+
 	name             string
 	imageRespository string
 	imageTag         string
@@ -42,11 +46,23 @@ type Container struct {
 
 type ContainerCallback func(*Container) error
 
+func newDockerClient() (*docker.Client, error) {
+	if os.Getenv("DOCKER_MACHINE_NAME") != "" {
+		return docker.NewClientFromEnv()
+	}
+	return docker.NewClient("unix:///var/run/docker.sock")
+}
+
 func NewDockerContainer(opts ...Option) *Container {
+	client, err := newDockerClient()
+	if err != nil {
+		panic(err)
+	}
+
 	c := &Container{
 		portBindings: make(map[docker.Port][]docker.PortBinding),
 		exposedPorts: make(map[docker.Port]struct{}),
-		dockerClient: newDockerClient(),
+		dockerClient: client,
 		healthChecker: func(c *Container) error {
 			return nil
 		},
@@ -64,7 +80,6 @@ func NewDockerContainer(opts ...Option) *Container {
 		}
 	}
 
-	var err error
 	c.container, err = c.dockerClient.CreateContainer(docker.CreateContainerOptions{
 		Name: c.name + generateNameSuffix(),
 		Config: &docker.Config{
@@ -85,16 +100,6 @@ func NewDockerContainer(opts ...Option) *Container {
 	return c
 }
 
-func newDockerClient() *docker.Client {
-	var client *docker.Client
-	if os.Getenv("DOCKER_MACHINE_NAME") != "" {
-		client, _ = docker.NewClientFromEnv()
-	} else {
-		client, _ = docker.NewClient("unix:///var/run/docker.sock")
-	}
-	return client
-}
-
 func (c *Container) OnReady(initializer ContainerCallback) {
 	c.initializer = initializer
 }
@@ -105,6 +110,9 @@ func (c *Container) Start() error {
 		return err
 	}
 
+	defer log.Debug("Container IP address", "container ID", c.container.ID, "ip", c.IPAddress())
+
+	c.Started = true
 	defer func() {
 		if c.initializer != nil {
 			err = c.initializer(c)
@@ -128,12 +136,29 @@ func (c *Container) addHostPortBinding(containerPort string, hostPort string) {
 }
 
 func (c *Container) Suspend() error {
+	defer func() {
+		c.Started = false
+	}()
 	return c.dockerClient.StopContainer(c.container.ID, 0)
 }
 
 func (c *Container) Wait() error {
 	_, err := c.dockerClient.WaitContainer(c.container.ID)
 	return err
+}
+
+func (c *Container) Run() error {
+	if err := c.Start(); err != nil {
+		log.Error("Failed to start container", "err", err)
+		return err
+	}
+
+	if err := c.Wait(); err != nil {
+		log.Error("Failed to wait container", "err", err)
+		return err
+	}
+
+	return c.Stop()
 }
 
 func (c *Container) Stop() error {
@@ -144,6 +169,33 @@ func (c *Container) Stop() error {
 	})
 }
 
+func (c *Container) SetHealthChecker(checker ContainerCallback) *Container {
+	c.healthChecker = checker
+	return c
+}
+
+func (c *Container) SetInitializer(initializer ContainerCallback) *Container {
+	c.initializer = initializer
+	return c
+}
+
+func (c *Container) SetEnvVars(envs []string) *Container {
+	c.envs = envs
+	return c
+}
+
+// IPAddress returns the IP adress of the container.
+func (c *Container) IPAddress() string {
+	spec, err := c.dockerClient.InspectContainer(c.container.ID)
+	if err != nil {
+		log.Error("Failed to get IPAddress", "err", err)
+		return ""
+	}
+	return spec.NetworkSettings.IPAddress
+}
+
+// generateContainerID generates the UUID for container ID instead of the
+// default name combinator
 func generateContainerID() string {
 	return rand.New(
 		rand.HexEncoder(),

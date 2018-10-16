@@ -87,7 +87,7 @@ func HealthChecker(checker ContainerCallback) Option {
 	}
 }
 
-func Initializer(init func(*Container) error) Option {
+func Initializer(init ContainerCallback) Option {
 	return func(c *Container) {
 		c.initializer = init
 	}

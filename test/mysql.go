@@ -24,130 +24,6 @@ import (
 	"github.com/getamis/sirius/log"
 )
 
-type MySQLContainer struct {
-	dockerContainer *Container
-	MySQLOptions    MySQLOptions
-	Started         bool
-	URL             string
-}
-
-func (container *MySQLContainer) Start() error {
-	container.Started = true
-	err := container.dockerContainer.Start()
-	if err != nil {
-		return err
-	}
-
-	if err := updateMySQLContainerHost(container.dockerContainer, &container.MySQLOptions); err != nil {
-		return err
-	}
-	connectionString, _ := ToMySQLConnectionString(container.MySQLOptions)
-	container.URL = connectionString
-	return nil
-}
-
-func (container *MySQLContainer) Suspend() error {
-	return container.dockerContainer.Suspend()
-}
-
-func (container *MySQLContainer) Stop() error {
-	container.Started = false
-	return container.dockerContainer.Stop()
-}
-
-func (container *MySQLContainer) Teardown() error {
-	if container.dockerContainer != nil && container.Started {
-		container.Started = false
-		return container.dockerContainer.Stop()
-	}
-
-	db, err := sql.Open("mysql", container.URL)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	sql := fmt.Sprintf("DROP DATABASE IF EXISTS %s", container.MySQLOptions.Database)
-	if _, err = db.Exec(sql); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// MigrationOptions for mysql migration container
-type MigrationOptions struct {
-	ImageRepository string
-	ImageTag        string
-
-	// this command will override the default command.
-	// "bundle" "exec" "rake" "db:migrate"
-	Command []string
-}
-
-// RunMigrationContainer creates the migration container and connects to the
-// mysql database to run the migration scripts.
-func RunMigrationContainer(mysql *MySQLContainer, options MigrationOptions) error {
-	// the default command
-	command := []string{"bundle", "exec", "rake", "db:migrate"}
-	if len(options.Command) > 0 {
-		command = options.Command
-	}
-
-	if len(options.ImageTag) == 0 {
-		options.ImageTag = "latest"
-	}
-
-	// host = 127.0.0.1 means we run a mysql server on host,
-	// however the migration container needs to connect to the host from the container.
-	// so that we need to override the host name
-	// please note that is only supported on OS X
-	//
-	// when mysql.dockerContainer is defined, which means we've created the
-	// mysql container in the runtime, we need to inspect the address of the docker container.
-	if mysql.MySQLOptions.Host == "127.0.0.1" {
-		mysql.MySQLOptions.Host = "host.docker.internal"
-	} else if mysql.dockerContainer != nil {
-		inspectedContainer, err := mysql.dockerContainer.dockerClient.InspectContainer(mysql.dockerContainer.container.ID)
-		if err != nil {
-			return err
-		}
-
-		// Override the mysql host because the migration needs to connect to the
-		// mysql server via the docker bridge network directly.
-		mysql.MySQLOptions.Host = inspectedContainer.NetworkSettings.IPAddress
-		mysql.MySQLOptions.Port = "3306"
-	}
-
-	container := NewDockerContainer(
-		ImageRepository(options.ImageRepository),
-		ImageTag(options.ImageTag),
-		DockerEnv(
-			[]string{
-				"RAILS_ENV=customized",
-				fmt.Sprintf("HOST=%s", mysql.MySQLOptions.Host),
-				fmt.Sprintf("PORT=%s", mysql.MySQLOptions.Port),
-				fmt.Sprintf("DATABASE=%s", mysql.MySQLOptions.Database),
-				fmt.Sprintf("USERNAME=%s", mysql.MySQLOptions.Username),
-				fmt.Sprintf("PASSWORD=%s", mysql.MySQLOptions.Password),
-			},
-		),
-		RunOptions(command),
-	)
-
-	if err := container.Start(); err != nil {
-		log.Error("Failed to start container", "err", err)
-		return err
-	}
-
-	if err := container.Wait(); err != nil {
-		log.Error("Failed to wait container", "err", err)
-		return err
-	}
-
-	return container.Stop()
-}
-
 type MySQLOptions struct {
 	// The following options are used in the connection string and the mysql server container itself.
 	Username string
@@ -157,6 +33,23 @@ type MySQLOptions struct {
 
 	// The host address that will be used to build the connection string
 	Host string
+}
+
+// UpdateHostFromContainer updates the mysql host field according to the current environment
+//
+// If we're inside the container, we need to override the hostname
+// defined in the option.
+// If not, we should use the default value 127.0.0.1 because we will need to connect to the host port.
+// please note that the TEST_MYSQL_HOST can be overridden.
+func (o *MySQLOptions) UpdateHostFromContainer(c *Container) error {
+	if IsInsideContainer() {
+		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
+		if err != nil {
+			return err
+		}
+		o.Host = inspectedContainer.NetworkSettings.IPAddress
+	}
+	return nil
 }
 
 var DefaultMySQLOptions = MySQLOptions{
@@ -179,6 +72,46 @@ var DefaultMySQLOptions = MySQLOptions{
 	Host: "",
 }
 
+type MySQLContainer struct {
+	*Container
+	Options MySQLOptions
+	URL     string
+}
+
+func (container *MySQLContainer) Start() error {
+	err := container.Container.Start()
+	if err != nil {
+		return err
+	}
+
+	if err := container.Options.UpdateHostFromContainer(container.Container); err != nil {
+		return err
+	}
+
+	connectionString, _ := ToMySQLConnectionString(container.Options)
+	container.URL = connectionString
+	return nil
+}
+
+func (container *MySQLContainer) Teardown() error {
+	if container.Container != nil && container.Container.Started {
+		return container.Container.Stop()
+	}
+
+	db, err := sql.Open("mysql", container.URL)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	sql := fmt.Sprintf("DROP DATABASE IF EXISTS %s", container.Options.Database)
+	if _, err = db.Exec(sql); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func IsInsideContainer() bool {
 	if _, err := os.Stat("/.dockerenv"); err == nil {
 		return true
@@ -192,7 +125,7 @@ func IsInsideContainer() bool {
 func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 	return func(c *Container) error {
 		// We use this connection string to verify the mysql container is ready.
-		if err := updateMySQLContainerHost(c, &options); err != nil {
+		if err := options.UpdateHostFromContainer(c); err != nil {
 			return err
 		}
 		connectionString, err := ToMySQLConnectionString(options)
@@ -201,6 +134,7 @@ func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 		}
 
 		return retry(10, 5*time.Second, func() error {
+			log.Debug("Checking mysql status", "conn", connectionString)
 			db, err := sql.Open("mysql", connectionString)
 			if err != nil {
 				return err
@@ -210,23 +144,6 @@ func NewMySQLHealthChecker(options MySQLOptions) ContainerCallback {
 			return err
 		})
 	}
-}
-
-// updateMySQLContainerHost updates the mysql host field according to the current environment
-//
-// If we're inside the container, we need to override the hostname
-// defined in the option.
-// If not, we should use the default value 127.0.0.1 because we will need to connect to the host port.
-// please note that the TEST_MYSQL_HOST can be overridden.
-func updateMySQLContainerHost(c *Container, options *MySQLOptions) error {
-	if IsInsideContainer() {
-		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
-		if err != nil {
-			return err
-		}
-		options.Host = inspectedContainer.NetworkSettings.IPAddress
-	}
-	return nil
 }
 
 // Convert mysql options to mysql string
@@ -318,8 +235,8 @@ func SetupMySQL() (*MySQLContainer, error) {
 		}
 
 		return &MySQLContainer{
-			MySQLOptions: options,
-			URL:          connectionString,
+			Options: options,
+			URL:     connectionString,
 		}, nil
 	}
 
@@ -351,8 +268,8 @@ func NewMySQLContainer(options MySQLOptions, containerOptions ...Option) (*MySQL
 
 	// Create the container, please note that the container is not started yet.
 	container := &MySQLContainer{
-		MySQLOptions: options,
-		dockerContainer: NewDockerContainer(
+		Options: options,
+		Container: NewDockerContainer(
 			// this is to keep some flexibility for passing extra container options..
 			// however if we literally use "..." in the method call, an error
 			// "too many arguments" will raise.

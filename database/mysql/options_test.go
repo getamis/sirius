@@ -15,6 +15,7 @@
 package mysql
 
 import (
+	"crypto/tls"
 	"fmt"
 	"testing"
 
@@ -81,6 +82,18 @@ var _ = Describe("MySQL Options", func() {
 			})
 		})
 
+		Context("TLS", func() {
+			It("should enable", func() {
+				options := defaultOptions()
+				fn := EnableTLS(&tls.Config{})
+				fn(options)
+
+				Expect(options.TLSConfigName).ShouldNot(Equal("false"))
+				gotConntectionString, _ := ToConnectionString(fn)
+				Expect(gotConntectionString).Should(Equal(options.String()))
+			})
+		})
+
 		Context("Database", func() {
 			It("should match", func() {
 				dbName := "This is a database name"
@@ -100,7 +113,7 @@ var _ = Describe("MySQL Options", func() {
 
 		Context("DSNToOptions", func() {
 			It("should match", func() {
-				dsn := "root:my-secret-pw@tcp(192.168.99.100:26613)/mysql?charset=utf8&parseTime=True&loc=Local&allowNativePasswords=true"
+				dsn := "root:my-secret-pw@tcp(192.168.99.100:26613)/mysql?charset=utf8&parseTime=True&loc=Local&allowNativePasswords=true&tls=false"
 				conntecionOption, userOption, dbOption := DSNToOptions(dsn)
 				gotConntectionString, err := ToConnectionString(conntecionOption, userOption, dbOption)
 				Expect(err).Should(BeNil())

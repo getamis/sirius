@@ -18,30 +18,46 @@ import (
 	"context"
 
 	"github.com/getamis/sirius/log"
+	"github.com/getamis/sirius/rpc"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type CheckFn func(context.Context) error
 
-// defaultServer is the implementation of HealthCheckServiceServer
-type defaultServer struct {
+// server is the implementation of HealthCheckServiceServer
+type server struct {
+	logger   log.Logger
 	checkFns []CheckFn
 }
 
-func New(checkFns ...CheckFn) HealthCheckServiceServer {
-	return &defaultServer{
-		checkFns: checkFns,
+// NewService creates a new health checking service
+func NewService(opts ...Option) rpc.API {
+	s := &server{
+		logger: log.New("service", "health"),
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+func (s *server) Bind(server *grpc.Server) {
+	RegisterHealthCheckServiceServer(server, s)
+}
+
+func (s *server) Shutdown() {
+	s.logger.Info("shutdown successfully")
 }
 
 // Liveness is represented that whether application is able to make progress or not.
-func (s *defaultServer) Liveness(ctx context.Context, req *EmptyRequest) (*EmptyResponse, error) {
+func (s *server) Liveness(ctx context.Context, req *EmptyRequest) (*EmptyResponse, error) {
 	return nil, nil
 }
 
 // Readiness is represented that whether application is ready to start accepting traffic or not.
-func (s *defaultServer) Readiness(ctx context.Context, req *EmptyRequest) (*EmptyResponse, error) {
+func (s *server) Readiness(ctx context.Context, req *EmptyRequest) (*EmptyResponse, error) {
 	if len(s.checkFns) == 0 {
 		return nil, nil
 	}
@@ -51,7 +67,7 @@ func (s *defaultServer) Readiness(ctx context.Context, req *EmptyRequest) (*Empt
 			errCh <- checker(ctx)
 		}(checker)
 	}
-	for _ = range s.checkFns {
+	for range s.checkFns {
 		if err := <-errCh; err != nil {
 			log.Error("Failed to check readiness", "err", err)
 			return nil, status.Error(codes.Unavailable, err.Error())

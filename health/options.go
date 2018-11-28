@@ -14,4 +14,11 @@
 
 package health
 
-type Option func(opts *server)
+type Option func(server *server)
+
+// Check retruns an option to add check functions
+func Check(fns ...CheckFn) Option {
+	return func(server *server) {
+		server.checkFns = append(server.checkFns, fns...)
+	}
+}

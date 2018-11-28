@@ -18,9 +18,8 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/grpc"
-
 	"github.com/getamis/sirius/log"
+	"google.golang.org/grpc"
 )
 
 const (

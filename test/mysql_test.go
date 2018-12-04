@@ -38,7 +38,7 @@ func TestRunMigration(t *testing.T) {
 	db.Close()
 
 	if image, ok := os.LookupEnv("MIGRATION_IMAGE_REPO"); ok {
-		err = RunMigrationContainer(mysql, MigrationOptions{ImageRepository: image})
+		err = RunMigrationContainer(mysql.SQLContainer, MigrationOptions{ImageRepository: image})
 		assert.NoError(t, err, "migration image should be executed without error.")
 	}
 

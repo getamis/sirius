@@ -31,35 +31,8 @@ const (
 	ErrDuplicateDatabase = "42P04"
 )
 
-type PostgreSQLOptions struct {
-	// The following options are used in the connection string and the postgresql server container itself.
-	Username string
-	Password string
-	Port     string
-	Database string
-
-	// The host address that will be used to build the connection string
-	Host string
-}
-
-// UpdateHostFromContainer updates the postgresql host field according to the current environment
-//
-// If we're inside the container, we need to override the hostname
-// defined in the option.
-// If not, we should use the default value 127.0.0.1 because we will need to connect to the host port.
-// please note that the TEST_POSTGRESQL_HOST can be overridden.
-func (o *PostgreSQLOptions) UpdateHostFromContainer(c *Container) error {
-	if IsInsideContainer() {
-		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
-		if err != nil {
-			return err
-		}
-		o.Host = inspectedContainer.NetworkSettings.IPAddress
-	}
-	return nil
-}
-
-var DefaultPostgreSQLOptions = PostgreSQLOptions{
+var DefaultPostgreSQLOptions = SQLOptions{
+	Driver:   "postgres",
 	Username: "admin",
 	Password: "12345",
 
@@ -80,9 +53,8 @@ var DefaultPostgreSQLOptions = PostgreSQLOptions{
 }
 
 type PostgreSQLContainer struct {
-	*Container
-	Options PostgreSQLOptions
-	URL     string
+	*SQLContainer
+	Args string
 }
 
 func (container *PostgreSQLContainer) Start() error {
@@ -95,8 +67,10 @@ func (container *PostgreSQLContainer) Start() error {
 		return err
 	}
 
-	connectionString, _ := ToPostgreSQLConnectionArgs(container.Options)
+	connectionString, _ := container.Options.ToConnectionString()
 	container.URL = connectionString
+
+	container.Args, _ = ToPostgresArgs(container.Options)
 	return nil
 }
 
@@ -105,7 +79,7 @@ func (container *PostgreSQLContainer) Teardown() error {
 		return container.Container.Stop()
 	}
 
-	db, err := sql.Open("postgres", container.URL)
+	db, err := sql.Open("postgres", container.Args)
 	if err != nil {
 		return err
 	}
@@ -119,51 +93,49 @@ func (container *PostgreSQLContainer) Teardown() error {
 	return nil
 }
 
-func NewPostgreSQLHealthChecker(options PostgreSQLOptions) ContainerCallback {
+func NewPostgreSQLHealthChecker(options SQLOptions) ContainerCallback {
 	return func(c *Container) error {
 		// We use this connection string to verify the postgresql container is ready.
 		if err := options.UpdateHostFromContainer(c); err != nil {
 			return err
 		}
-		connectionString, err := ToPostgreSQLConnectionArgs(options)
+		connectionArgs, err := ToPostgresArgs(options)
 		if err != nil {
 			return err
 		}
 
 		return retry(10, 5*time.Second, func() error {
-			log.Debug("Checking postgresql status", "conn", connectionString)
-			db, err := sql.Open("postgres", connectionString)
+			log.Debug("Checking postgresql status", "conn", connectionArgs)
+			db, err := sql.Open("postgres", connectionArgs)
 			if err != nil {
 				return err
 			}
 			defer db.Close()
 
 			_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", options.Database))
-			if err != nil {
-				if qpErr, ok := err.(*pq.Error); ok {
-					if string(qpErr.Code) == ErrDuplicateDatabase {
-						return nil
-					}
-				}
+			if IsDuplicateDatabase(err) {
+				return nil
 			}
 			return err
 		})
 	}
 }
 
-// Convert postgresql options to postgresql string
-func ToPostgreSQLConnectionArgs(options PostgreSQLOptions) (string, error) {
-	// We use this connection string to verify the postgresql container is ready.
-	return postgresql.ToConnectionArgs(
-		postgresql.Connector(options.Host, options.Port),
-		postgresql.Database(options.Database),
-		postgresql.UserInfo(options.Username, options.Password),
-	)
+func IsDuplicateDatabase(err error) bool {
+	if err == nil {
+		return false
+	}
+	if qpErr, ok := err.(*pq.Error); ok {
+		if string(qpErr.Code) == ErrDuplicateDatabase {
+			return true
+		}
+	}
+	return false
 }
 
 // LoadPostgreSQLOptions returns the postgresql options that will be used for the test
 // cases to connect to.
-func LoadPostgreSQLOptions() PostgreSQLOptions {
+func LoadPostgreSQLOptions() SQLOptions {
 	options := DefaultPostgreSQLOptions
 
 	// postgresql container exposes port at 3306, if we're inside a container, we
@@ -195,11 +167,11 @@ func LoadPostgreSQLOptions() PostgreSQLOptions {
 	return options
 }
 
-func createPostgreSQLDatabase(options PostgreSQLOptions) error {
+func createPostgreSQLDatabase(options SQLOptions) error {
 	// We must pass postgresql.Database to the connection string function, if we
 	// don't, the connection string will use "db" as the default database.
 	// see https://maicoin.slack.com/archives/G0PKWFTNY/p1539335776000100 for more details.
-	connectionString, err := postgresql.ToConnectionString(
+	connectionArgs, err := postgresql.ToConnectionArgs(
 		postgresql.Connector(options.Host, options.Port),
 		postgresql.Database(""),
 		postgresql.UserInfo(options.Username, options.Password),
@@ -208,14 +180,17 @@ func createPostgreSQLDatabase(options PostgreSQLOptions) error {
 		return err
 	}
 
-	db, err := sql.Open("postgres", connectionString)
+	db, err := sql.Open("postgres", connectionArgs)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	sql := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s", options.Database)
+	sql := fmt.Sprintf("CREATE DATABASE %s", options.Database)
 	_, err = db.Exec(sql)
+	if IsDuplicateDatabase(err) {
+		return nil
+	}
 	return err
 }
 
@@ -226,22 +201,22 @@ func SetupPostgreSQL() (*PostgreSQLContainer, error) {
 	options := LoadPostgreSQLOptions()
 	if _, ok := os.LookupEnv("TEST_POSTGRESQL_HOST"); ok {
 
-		connectionString, err := postgresql.ToConnectionString(
-			postgresql.Connector(options.Host, options.Port),
-			postgresql.Database(options.Database),
-			postgresql.UserInfo(options.Username, options.Password),
-		)
+		connectionString, err := options.ToConnectionString()
 		if err != nil {
 			return nil, fmt.Errorf("Failed to create postgresql connection string: %v", err)
 		}
+		connectionargs, _ := ToPostgresArgs(options)
 
 		if err := createPostgreSQLDatabase(options); err != nil {
 			return nil, fmt.Errorf("Failed to create postgresql database: %v", err)
 		}
 
 		return &PostgreSQLContainer{
-			Options: options,
-			URL:     connectionString,
+			SQLContainer: &SQLContainer{
+				Options: options,
+				URL:     connectionString,
+			},
+			Args: connectionargs,
 		}, nil
 	}
 
@@ -257,7 +232,7 @@ func SetupPostgreSQL() (*PostgreSQLContainer, error) {
 	return container, nil
 }
 
-func NewPostgreSQLContainer(options PostgreSQLOptions, containerOptions ...Option) (*PostgreSQLContainer, error) {
+func NewPostgreSQLContainer(options SQLOptions, containerOptions ...Option) (*PostgreSQLContainer, error) {
 	// Once the postgresql container is ready, we will create the database if it does not exist.
 	checker := NewPostgreSQLHealthChecker(options)
 
@@ -273,28 +248,40 @@ func NewPostgreSQLContainer(options PostgreSQLOptions, containerOptions ...Optio
 
 	// Create the container, please note that the container is not started yet.
 	container := &PostgreSQLContainer{
-		Options: options,
-		Container: NewDockerContainer(
-			// this is to keep some flexibility for passing extra container options..
-			// however if we literally use "..." in the method call, an error
-			// "too many arguments" will raise.
-			append([]Option{
-				ImageRepository("postgres"),
-				ImageTag("9.6"),
-				DockerEnv(
-					[]string{
-						fmt.Sprintf("POSTGRES_USER=%s", options.Username),
-						fmt.Sprintf("POSTGRES_PASSWORD=%s", options.Password),
-					},
-				),
-				HealthChecker(checker),
-			}, containerOptions...)...,
-		),
+		SQLContainer: &SQLContainer{
+			Options: options,
+			Container: NewDockerContainer(
+				// this is to keep some flexibility for passing extra container options..
+				// however if we literally use "..." in the method call, an error
+				// "too many arguments" will raise.
+				append([]Option{
+					ImageRepository("postgres"),
+					ImageTag("9.6"),
+					DockerEnv(
+						[]string{
+							fmt.Sprintf("POSTGRES_USER=%s", options.Username),
+							fmt.Sprintf("POSTGRES_PASSWORD=%s", options.Password),
+						},
+					),
+					HealthChecker(checker),
+				}, containerOptions...)...,
+			),
+		},
 	}
 
 	// please note that: in order to get the correct container address, the
 	// connection string will be updated when the container is started.
-	connectionString, _ := ToPostgreSQLConnectionArgs(options)
+	connectionString, _ := options.ToConnectionString()
 	container.URL = connectionString
+
+	container.Args, _ = ToPostgresArgs(options)
 	return container, nil
+}
+
+func ToPostgresArgs(o SQLOptions) (string, error) {
+	return postgresql.ToConnectionArgs(
+		postgresql.Connector(o.Host, o.Port),
+		postgresql.Database(o.Database),
+		postgresql.UserInfo(o.Username, o.Password),
+	)
 }

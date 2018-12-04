@@ -24,12 +24,34 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestPostgreSQLRunMigration(t *testing.T) {
+	if _, ok := os.LookupEnv("MIGRATION_IMAGE_REPO"); !ok {
+		t.Skip("migration image repo is not defined.")
+	}
+
+	postgresql, err := SetupPostgreSQL()
+	assert.NoError(t, err, "postgresql connection handle should be created.")
+	assert.NotNil(t, postgresql, "the postgresql container should be returned.")
+
+	db, err := gorm.Open("postgresql", postgresql.Args)
+	assert.NoError(t, err, "postgresql connection should work")
+	db.Close()
+
+	if image, ok := os.LookupEnv("MIGRATION_IMAGE_REPO"); ok {
+		err = RunMigrationContainer(postgresql.SQLContainer, MigrationOptions{ImageRepository: image})
+		assert.NoError(t, err, "migration image should be executed without error.")
+	}
+
+	err = postgresql.Teardown()
+	assert.NoError(t, err, "postgresql connection handle should be torn down.")
+}
+
 func TestPostgreSQLSetupAndTeardown(t *testing.T) {
 	postgresql, err := SetupPostgreSQL()
 	assert.NoError(t, err, "postgresql connection handle should be created.")
 	assert.NotNil(t, postgresql, "the postgresql container should be returned.")
 
-	db, err := gorm.Open("postgres", postgresql.URL)
+	db, err := gorm.Open("postgres", postgresql.Args)
 	assert.NoError(t, err, "postgresql connection should work")
 	db.Close()
 
@@ -49,26 +71,26 @@ func TestPostgreSQLContainer(t *testing.T) {
 	assert.NotNil(t, container)
 	assert.NoError(t, container.Start(), "postgresql container should be started")
 
-	db, err := gorm.Open("postgres", container.URL)
+	db, err := gorm.Open("postgres", container.Args)
 	assert.NoError(t, err, "postgresql connection should work")
 	db.Close()
 
 	// stop postgresql
 	assert.NoError(t, container.Suspend())
 	time.Sleep(100 * time.Millisecond)
-	_, err = gorm.Open("postgres", container.URL)
+	_, err = gorm.Open("postgres", container.Args)
 	assert.Error(t, err, "should got error")
 
 	// restart postgresql
 	assert.NoError(t, container.Start())
-	db, err = gorm.Open("postgres", container.URL)
+	db, err = gorm.Open("postgres", container.Args)
 	assert.NoError(t, err, "should be no error")
 	db.Close()
 
-	// close MySQL
+	// close postgresql
 	assert.NoError(t, container.Stop())
 	time.Sleep(100 * time.Millisecond)
 
-	_, err = gorm.Open("postgres", container.URL)
+	_, err = gorm.Open("postgres", container.Args)
 	assert.Error(t, err, "should got error")
 }

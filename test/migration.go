@@ -85,18 +85,6 @@ func RunMigrationContainer(dbContainer *SQLContainer, options MigrationOptions) 
 // RunGoMigrationContainer creates the migration container and connects to the
 // sql database container to run the migration scripts.
 func RunGoMigrationContainer(dbContainer *SQLContainer, options MigrationOptions) error {
-	connectionString, err := dbContainer.Options.ToConnectionString()
-	if err != nil {
-		return err
-	}
-
-	dbString := fmt.Sprintf("%s://%s", dbContainer.Options.Driver, connectionString)
-	// the default command
-	command := []string{"-source", "file://migration", "-database", dbString, "-verbose", "up"}
-	if len(options.Command) > 0 {
-		command = options.Command
-	}
-
 	if len(options.ImageTag) == 0 {
 		options.ImageTag = "latest"
 	}
@@ -123,6 +111,17 @@ func RunGoMigrationContainer(dbContainer *SQLContainer, options MigrationOptions
 			dbContainer.Options.Port = k.Port()
 			break
 		}
+	}
+
+	connectionString, err := dbContainer.Options.ToConnectionString()
+	if err != nil {
+		return err
+	}
+	dbString := fmt.Sprintf("%s://%s", dbContainer.Options.Driver, connectionString)
+	// the default command
+	command := []string{"-source", "file://migration", "-database", dbString, "-verbose", "up"}
+	if len(options.Command) > 0 {
+		command = options.Command
 	}
 
 	container := NewDockerContainer(

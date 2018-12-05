@@ -104,7 +104,7 @@ var _ = Describe("Postgresql Options", func() {
 	})
 })
 
-func TestMySQLOptionsSuite(t *testing.T) {
+func TestPostgreSQLOptionsSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "MySQL Options Suite")
+	RunSpecs(t, "PostgreSQL Options Suite")
 }

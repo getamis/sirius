@@ -18,7 +18,7 @@ type MigrationOptions struct {
 
 // RunMigrationContainer creates the migration container and connects to the
 // sql database container to run the migration scripts.
-func RunMigrationContainer(sql *SQLContainer, options MigrationOptions) error {
+func RunMigrationContainer(dbContainer *SQLContainer, options MigrationOptions) error {
 	// the default command
 	command := []string{"bundle", "exec", "rake", "db:migrate"}
 	if len(options.Command) > 0 {
@@ -36,19 +36,19 @@ func RunMigrationContainer(sql *SQLContainer, options MigrationOptions) error {
 	//
 	// when sql.Container is defined, which means we've created the
 	// sql container in the runtime, we need to inspect the address of the docker container.
-	if sql.Options.Host == "127.0.0.1" {
-		sql.Options.Host = "host.docker.internal"
-	} else if sql.Container != nil {
-		inspectedContainer, err := sql.Container.dockerClient.InspectContainer(sql.Container.container.ID)
+	if dbContainer.Options.Host == "127.0.0.1" {
+		dbContainer.Options.Host = "host.docker.internal"
+	} else if dbContainer.Container != nil {
+		inspectedContainer, err := dbContainer.Container.dockerClient.InspectContainer(dbContainer.Container.container.ID)
 		if err != nil {
 			return err
 		}
 
 		// Override the sql host because the migration needs to connect to the
 		// sql server via the docker bridge network directly.
-		sql.Options.Host = inspectedContainer.NetworkSettings.IPAddress
-		for k := range sql.container.Config.ExposedPorts {
-			sql.Options.Port = k.Port()
+		dbContainer.Options.Host = inspectedContainer.NetworkSettings.IPAddress
+		for k := range dbContainer.container.Config.ExposedPorts {
+			dbContainer.Options.Port = k.Port()
 			break
 		}
 	}
@@ -59,11 +59,11 @@ func RunMigrationContainer(sql *SQLContainer, options MigrationOptions) error {
 		DockerEnv(
 			[]string{
 				"RAILS_ENV=customized",
-				fmt.Sprintf("HOST=%s", sql.Options.Host),
-				fmt.Sprintf("PORT=%s", sql.Options.Port),
-				fmt.Sprintf("DATABASE=%s", sql.Options.Database),
-				fmt.Sprintf("USERNAME=%s", sql.Options.Username),
-				fmt.Sprintf("PASSWORD=%s", sql.Options.Password),
+				fmt.Sprintf("HOST=%s", dbContainer.Options.Host),
+				fmt.Sprintf("PORT=%s", dbContainer.Options.Port),
+				fmt.Sprintf("DATABASE=%s", dbContainer.Options.Database),
+				fmt.Sprintf("USERNAME=%s", dbContainer.Options.Username),
+				fmt.Sprintf("PASSWORD=%s", dbContainer.Options.Password),
 			},
 		),
 		RunOptions(command),
@@ -82,15 +82,15 @@ func RunMigrationContainer(sql *SQLContainer, options MigrationOptions) error {
 	return container.Stop()
 }
 
-// RunGOMigrationContainer creates the migration container and connects to the
+// RunGoMigrationContainer creates the migration container and connects to the
 // sql database container to run the migration scripts.
-func RunGoMigrationContainer(sql *SQLContainer, options MigrationOptions) error {
-	connectionString, err := sql.Options.ToConnectionString()
+func RunGoMigrationContainer(dbContainer *SQLContainer, options MigrationOptions) error {
+	connectionString, err := dbContainer.Options.ToConnectionString()
 	if err != nil {
 		return err
 	}
 
-	dbString := fmt.Sprintf("%s://%s", sql.Options.Driver, connectionString)
+	dbString := fmt.Sprintf("%s://%s", dbContainer.Options.Driver, connectionString)
 	// the default command
 	command := []string{"-source", "file://migration", "-database", dbString, "-verbose", "up"}
 	if len(options.Command) > 0 {
@@ -108,19 +108,19 @@ func RunGoMigrationContainer(sql *SQLContainer, options MigrationOptions) error 
 	//
 	// when sql.Container is defined, which means we've created the
 	// sql container in the runtime, we need to inspect the address of the docker container.
-	if sql.Options.Host == "127.0.0.1" {
-		sql.Options.Host = "host.docker.internal"
-	} else if sql.Container != nil {
-		inspectedContainer, err := sql.Container.dockerClient.InspectContainer(sql.Container.container.ID)
+	if dbContainer.Options.Host == "127.0.0.1" {
+		dbContainer.Options.Host = "host.docker.internal"
+	} else if dbContainer.Container != nil {
+		inspectedContainer, err := dbContainer.Container.dockerClient.InspectContainer(dbContainer.Container.container.ID)
 		if err != nil {
 			return err
 		}
 
 		// Override the sql host because the migration needs to connect to the
 		// sql server via the docker bridge network directly.
-		sql.Options.Host = inspectedContainer.NetworkSettings.IPAddress
-		for k := range sql.container.Config.ExposedPorts {
-			sql.Options.Port = k.Port()
+		dbContainer.Options.Host = inspectedContainer.NetworkSettings.IPAddress
+		for k := range dbContainer.container.Config.ExposedPorts {
+			dbContainer.Options.Port = k.Port()
 			break
 		}
 	}

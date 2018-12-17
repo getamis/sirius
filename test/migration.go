@@ -47,7 +47,7 @@ func RunMigrationContainer(dbContainer *SQLContainer, options MigrationOptions) 
 		// Override the sql host because the migration needs to connect to the
 		// sql server via the docker bridge network directly.
 		dbContainer.Options.Host = inspectedContainer.NetworkSettings.IPAddress
-		for k := range dbContainer.container.Config.ExposedPorts {
+		for k := range inspectedContainer.Config.ExposedPorts {
 			dbContainer.Options.Port = k.Port()
 			break
 		}
@@ -107,7 +107,7 @@ func RunGoMigrationContainer(dbContainer *SQLContainer, options MigrationOptions
 		// Override the sql host because the migration needs to connect to the
 		// sql server via the docker bridge network directly.
 		dbContainer.Options.Host = inspectedContainer.NetworkSettings.IPAddress
-		for k := range dbContainer.container.Config.ExposedPorts {
+		for k := range inspectedContainer.Config.ExposedPorts {
 			dbContainer.Options.Port = k.Port()
 			break
 		}

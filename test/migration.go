@@ -53,6 +53,7 @@ func RunMigrationContainer(dbContainer *SQLContainer, options MigrationOptions) 
 		}
 	}
 
+	log.Info("Starting migration container with", "image", options.ImageRepository, "tag", options.ImageTag)
 	container := NewDockerContainer(
 		ImageRepository(options.ImageRepository),
 		ImageTag(options.ImageTag),

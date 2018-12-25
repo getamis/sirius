@@ -20,11 +20,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/getamis/sirius/log"
 	grpcProm "github.com/grpc-ecosystem/go-grpc-prometheus"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/getamis/sirius/log"
 )
 
 type PrometheusRegistry struct {
@@ -167,6 +166,29 @@ func (p *PrometheusRegistry) NewHistogram(key string, opts ...Option) Histogram 
 		log.Warn("Failed to register a histogram", "key", key, "err", err)
 	}
 	return h
+}
+
+func (p *PrometheusRegistry) NewHistogramVec(key string, labels []string, opts ...Option) HistogramVec {
+	options := NewOptions(p.namespace, "", p.labels)
+	for _, fn := range opts {
+		fn(options)
+	}
+	hv := prom.NewHistogramVec(prom.HistogramOpts{
+		Namespace:   options.Namespace,
+		Subsystem:   options.Subsystem,
+		Name:        key,
+		Help:        key,
+		ConstLabels: prom.Labels(options.Labels),
+	}, labels)
+	err := p.registry.Register(hv)
+	if err != nil {
+		reg, ok := err.(prom.AlreadyRegisteredError)
+		if ok {
+			return reg.ExistingCollector.(*prom.HistogramVec)
+		}
+		log.Warn("Failed to register a histogram vector", "key", key, "err", err)
+	}
+	return hv
 }
 
 func (p *PrometheusRegistry) NewTimer(key string, opts ...Option) Timer {

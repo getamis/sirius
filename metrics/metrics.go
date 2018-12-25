@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"time"
 
+	prom "github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 )
 
@@ -44,6 +45,15 @@ type Gauge interface {
 // observations and an observation count.
 type Histogram interface {
 	Observe(float64)
+}
+
+type HistogramLabels = prom.Labels
+type HistogramObserver = prom.Observer
+
+// HistogramVec is returned by NewHistogramVec.
+type HistogramVec interface {
+	GetMetricWith(HistogramLabels) (HistogramObserver, error)
+	GetMetricWithLabelValues(lvs ...string) (HistogramObserver, error)
 }
 
 // Timer represents a Histogram Metrics to observe the time duration according to given begin time.

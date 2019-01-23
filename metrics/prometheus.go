@@ -184,11 +184,11 @@ func (p *PrometheusRegistry) NewHistogramVec(key string, labels []string, opts .
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
-			return reg.ExistingCollector.(*prom.HistogramVec)
+			return &histogramVec{reg.ExistingCollector.(*prom.HistogramVec)}
 		}
 		log.Warn("Failed to register a histogram vector", "key", key, "err", err)
 	}
-	return hv
+	return &histogramVec{hv}
 }
 
 func (p *PrometheusRegistry) NewTimer(key string, opts ...Option) Timer {
@@ -198,7 +198,7 @@ func (p *PrometheusRegistry) NewTimer(key string, opts ...Option) Timer {
 }
 
 func (p *PrometheusRegistry) NewWorker(key string, opts ...Option) Worker {
-	counterVec := p.newCounterVec(key, []string{"result"}, opts...)
+	counterVec := p.NewCounterVec(key, []string{"result"}, opts...)
 	// These are just references (no increments),
 	// as just referencing will create the labels but not set values.
 	success, _ := counterVec.GetMetricWithLabelValues("success")
@@ -210,7 +210,7 @@ func (p *PrometheusRegistry) NewWorker(key string, opts ...Option) Worker {
 	}
 }
 
-func (p *PrometheusRegistry) newCounterVec(key string, labelNames []string, opts ...Option) *prom.CounterVec {
+func (p *PrometheusRegistry) NewCounterVec(key string, labelNames []string, opts ...Option) CounterVec {
 	options := NewOptions(p.namespace, "", p.labels)
 	for _, fn := range opts {
 		fn(options)
@@ -226,12 +226,12 @@ func (p *PrometheusRegistry) newCounterVec(key string, labelNames []string, opts
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
-			return reg.ExistingCollector.(*prom.CounterVec)
+			existingCV := reg.ExistingCollector.(*prom.CounterVec)
+			return &counterVec{existingCV}
 		}
 		log.Warn("Failed to register a counter vec", "key", key, "err", err)
 	}
-	return cnt
-
+	return &counterVec{cnt}
 }
 
 // -----------------------------------------------------------------------------
@@ -259,4 +259,30 @@ func (w *worker) Observe(begin time.Time, err error) {
 		return
 	}
 	w.success.Inc()
+}
+
+// -----------------------------------------------------------------------------
+// counterVec
+type counterVec struct {
+	*prom.CounterVec
+}
+
+func (c *counterVec) GetMetricWith(labels MetricsLabels) (Counter, error) {
+	return c.CounterVec.GetMetricWith(labels)
+}
+func (c *counterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) {
+	return c.CounterVec.GetMetricWithLabelValues(lvs...)
+}
+
+// -----------------------------------------------------------------------------
+// histogramVec
+type histogramVec struct {
+	*prom.HistogramVec
+}
+
+func (h *histogramVec) GetMetricWith(labels MetricsLabels) (Histogram, error) {
+	return h.HistogramVec.GetMetricWith(labels)
+}
+func (h *histogramVec) GetMetricWithLabelValues(lvs ...string) (Histogram, error) {
+	return h.HistogramVec.GetMetricWithLabelValues(lvs...)
 }

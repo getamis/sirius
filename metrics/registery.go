@@ -46,6 +46,7 @@ type Registry interface {
 	NewGauge(key string, opts ...Option) Gauge
 	NewHistogram(key string, opts ...Option) Histogram
 	NewHistogramVec(key string, labels []string, opts ...Option) HistogramVec
+	NewCounterVec(key string, labels []string, opts ...Option) CounterVec
 	NewTimer(key string, opts ...Option) Timer
 	NewWorker(key string, opts ...Option) Worker
 
@@ -75,6 +76,10 @@ func NewHistogram(key string, opts ...Option) Histogram {
 
 func NewHistogramVec(key string, labels []string, opts ...Option) HistogramVec {
 	return DefaultRegistry.NewHistogramVec(key, labels, opts...)
+}
+
+func NewCounterVec(key string, labels []string, opts ...Option) CounterVec {
+	return DefaultRegistry.NewCounterVec(key, labels, opts...)
 }
 
 func NewTimer(key string, opts ...Option) Timer {

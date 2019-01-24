@@ -58,6 +58,10 @@ func (d *DummyRegistry) NewHistogramVec(key string, labels []string, opts ...Opt
 	return &dummyHistogramVec{}
 }
 
+func (d *DummyRegistry) NewCounterVec(key string, labels []string, opts ...Option) CounterVec {
+	return &dummyCounterVec{}
+}
+
 func (d *DummyRegistry) NewTimer(key string, opts ...Option) Timer {
 	return &dummyTimer{}
 }
@@ -95,17 +99,20 @@ func (d *dummyHistogram) Observe(float64) {}
 
 type dummyHistogramVec struct{}
 
-func (d *dummyHistogramVec) GetMetricWith(HistogramLabels) (HistogramObserver, error) {
+func (d *dummyHistogramVec) GetMetricWith(MetricsLabels) (Histogram, error) {
 	return &dummyHistogram{}, nil
 }
-func (d *dummyHistogramVec) GetMetricWithLabelValues(lvs ...string) (HistogramObserver, error) {
+func (d *dummyHistogramVec) GetMetricWithLabelValues(lvs ...string) (Histogram, error) {
 	return &dummyHistogram{}, nil
 }
-func (d *dummyHistogramVec) With(HistogramLabels) HistogramObserver {
-	return &dummyHistogram{}
+
+type dummyCounterVec struct{}
+
+func (d *dummyCounterVec) GetMetricWith(MetricsLabels) (Counter, error) {
+	return &dummyCounter{}, nil
 }
-func (d *dummyHistogramVec) WithLabelValues(...string) HistogramObserver {
-	return &dummyHistogram{}
+func (d *dummyCounterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) {
+	return &dummyCounter{}, nil
 }
 
 type dummyTimer struct{}

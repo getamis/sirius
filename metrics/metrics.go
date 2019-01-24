@@ -32,6 +32,14 @@ type Counter interface {
 	Add(float64)
 }
 
+type MetricsLabels = prom.Labels
+
+// CounterVec is returned by NewCounterVec.
+type CounterVec interface {
+	GetMetricWith(MetricsLabels) (Counter, error)
+	GetMetricWithLabelValues(lvs ...string) (Counter, error)
+}
+
 // Gauge is a Metric that represents a single numerical value that can
 // arbitrarily go up and down.
 // A Gauge is typically used for measured values like temperatures or current
@@ -47,13 +55,10 @@ type Histogram interface {
 	Observe(float64)
 }
 
-type HistogramLabels = prom.Labels
-type HistogramObserver = prom.Observer
-
 // HistogramVec is returned by NewHistogramVec.
 type HistogramVec interface {
-	GetMetricWith(HistogramLabels) (HistogramObserver, error)
-	GetMetricWithLabelValues(lvs ...string) (HistogramObserver, error)
+	GetMetricWith(MetricsLabels) (Histogram, error)
+	GetMetricWithLabelValues(lvs ...string) (Histogram, error)
 }
 
 // Timer represents a Histogram Metrics to observe the time duration according to given begin time.

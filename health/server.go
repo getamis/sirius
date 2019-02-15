@@ -58,20 +58,9 @@ func (s *server) Liveness(ctx context.Context, req *EmptyRequest) (*EmptyRespons
 
 // Readiness is represented that whether application is ready to start accepting traffic or not.
 func (s *server) Readiness(ctx context.Context, req *EmptyRequest) (*EmptyResponse, error) {
-	if len(s.checkFns) == 0 {
-		return nil, nil
-	}
-	errCh := make(chan error, len(s.checkFns))
-	for _, checker := range s.checkFns {
-		go func(checker CheckFn) {
-			errCh <- checker(ctx)
-		}(checker)
-	}
-	for range s.checkFns {
-		if err := <-errCh; err != nil {
-			log.Error("Failed to check readiness", "err", err)
-			return nil, status.Error(codes.Unavailable, err.Error())
-		}
+	if err := CheckHealth(ctx, s.checkFns); err != nil {
+		log.Error("Failed to check readiness", "err", err)
+		return nil, status.Error(codes.Unavailable, err.Error())
 	}
 	return nil, nil
 }

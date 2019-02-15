@@ -16,6 +16,7 @@ package health
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/getamis/sirius/log"
@@ -40,4 +41,38 @@ func GRPCServerHealthChecker(addr, serviceName string) CheckFn {
 		conn.Close()
 		return nil
 	}
+}
+
+func CheckHealth(ctx context.Context, checkFns []CheckFn) error {
+	if len(checkFns) == 0 {
+		return nil
+	}
+	errCh := make(chan error, len(checkFns))
+	for _, checker := range checkFns {
+		go func(checker CheckFn) {
+			errCh <- checker(ctx)
+		}(checker)
+	}
+	for range checkFns {
+		if err := <-errCh; err != nil {
+			log.Error("Failed to check readiness", "err", err)
+			return err
+		}
+	}
+	return nil
+}
+
+// SetLivenessAndReadiness sets the liveness and readiness route in http server mux
+func SetLivenessAndReadiness(mux *http.ServeMux, checkFns ...CheckFn) {
+	mux.HandleFunc("/readiness", func(rw http.ResponseWriter, r *http.Request) {
+		if err := CheckHealth(r.Context(), checkFns); err != nil {
+			log.Error("Failed to check readiness", "err", err)
+			rw.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		rw.WriteHeader(http.StatusOK)
+	})
+	mux.HandleFunc("/liveness", func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(http.StatusOK)
+	})
 }

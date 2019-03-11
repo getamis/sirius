@@ -50,6 +50,10 @@ func (d *DummyRegistry) NewGauge(key string, opts ...Option) Gauge {
 	return &dummyGauge{}
 }
 
+func (d *DummyRegistry) NewGaugeVec(key string, labels []string, opts ...Option) GaugeVec {
+	return &dummyGaugeVec{}
+}
+
 func (d *DummyRegistry) NewHistogram(key string, opts ...Option) Histogram {
 	return &dummyHistogram{}
 }
@@ -92,6 +96,15 @@ func (d *dummyCounter) Add(float64) {}
 type dummyGauge struct{}
 
 func (d *dummyGauge) Set(float64) {}
+
+type dummyGaugeVec struct{}
+
+func (d *dummyGaugeVec) GetMetricWith(MetricsLabels) (Gauge, error) {
+	return &dummyGauge{}, nil
+}
+func (d *dummyGaugeVec) GetMetricWithLabelValues(lvs ...string) (Gauge, error) {
+	return &dummyGauge{}, nil
+}
 
 type dummyHistogram struct{}
 

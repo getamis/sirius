@@ -44,6 +44,7 @@ type Registry interface {
 	NewServerMetrics(opts ...Option) ServerMetrics
 	NewCounter(key string, opts ...Option) Counter
 	NewGauge(key string, opts ...Option) Gauge
+	NewGaugeVec(key string, labels []string, opts ...Option) GaugeVec
 	NewHistogram(key string, opts ...Option) Histogram
 	NewHistogramVec(key string, labels []string, opts ...Option) HistogramVec
 	NewCounterVec(key string, labels []string, opts ...Option) CounterVec
@@ -68,6 +69,10 @@ func NewCounter(key string, opts ...Option) Counter {
 
 func NewGauge(key string, opts ...Option) Gauge {
 	return DefaultRegistry.NewGauge(key, opts...)
+}
+
+func NewGaugeVec(key string, labels []string, opts ...Option) GaugeVec {
+	return DefaultRegistry.NewGaugeVec(key, labels, opts...)
 }
 
 func NewHistogram(key string, opts ...Option) Histogram {

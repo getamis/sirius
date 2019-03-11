@@ -48,6 +48,12 @@ type Gauge interface {
 	Set(float64)
 }
 
+// GaugeVec is returned by NewGaugeVec.
+type GaugeVec interface {
+	GetMetricWith(MetricsLabels) (Gauge, error)
+	GetMetricWithLabelValues(lvs ...string) (Gauge, error)
+}
+
 // A Histogram counts individual observations from an event or sample stream in
 // configurable buckets. Similar to a summary, it also provides a sum of
 // observations and an observation count.

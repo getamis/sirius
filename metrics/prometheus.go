@@ -145,6 +145,30 @@ func (p *PrometheusRegistry) NewGauge(key string, opts ...Option) Gauge {
 	return g
 }
 
+func (p *PrometheusRegistry) NewGaugeVec(key string, labelNames []string, opts ...Option) GaugeVec {
+	options := NewOptions(p.namespace, "", p.labels)
+	for _, fn := range opts {
+		fn(options)
+	}
+	cnt := prom.NewGaugeVec(prom.GaugeOpts{
+		Namespace:   options.Namespace,
+		Subsystem:   options.Subsystem,
+		Name:        key,
+		Help:        key,
+		ConstLabels: prom.Labels(options.Labels),
+	}, labelNames)
+	err := p.registry.Register(cnt)
+	if err != nil {
+		reg, ok := err.(prom.AlreadyRegisteredError)
+		if ok {
+			existingCV := reg.ExistingCollector.(*prom.GaugeVec)
+			return &gaugeVec{existingCV}
+		}
+		log.Warn("Failed to register a gauge vec", "key", key, "err", err)
+	}
+	return &gaugeVec{cnt}
+}
+
 func (p *PrometheusRegistry) NewHistogram(key string, opts ...Option) Histogram {
 	options := NewOptions(p.namespace, "", p.labels)
 	for _, fn := range opts {
@@ -272,6 +296,19 @@ func (c *counterVec) GetMetricWith(labels MetricsLabels) (Counter, error) {
 }
 func (c *counterVec) GetMetricWithLabelValues(lvs ...string) (Counter, error) {
 	return c.CounterVec.GetMetricWithLabelValues(lvs...)
+}
+
+// -----------------------------------------------------------------------------
+// gaugeVec
+type gaugeVec struct {
+	*prom.GaugeVec
+}
+
+func (c *gaugeVec) GetMetricWith(labels MetricsLabels) (Gauge, error) {
+	return c.GaugeVec.GetMetricWith(labels)
+}
+func (c *gaugeVec) GetMetricWithLabelValues(lvs ...string) (Gauge, error) {
+	return c.GaugeVec.GetMetricWithLabelValues(lvs...)
 }
 
 // -----------------------------------------------------------------------------

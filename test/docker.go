@@ -37,8 +37,10 @@ type Container struct {
 	exposedPorts map[docker.Port]struct{}
 
 	ports         []string
+	entrypoint    []string
 	runArgs       []string
 	envs          []string
+	links         []string
 	container     *docker.Container
 	healthChecker ContainerCallback
 	initializer   ContainerCallback
@@ -66,6 +68,7 @@ func NewDockerContainer(opts ...Option) *Container {
 		healthChecker: func(c *Container) error {
 			return nil
 		},
+		links: []string{},
 	}
 
 	for _, opt := range opts {
@@ -84,12 +87,14 @@ func NewDockerContainer(opts ...Option) *Container {
 		Name: c.name + generateNameSuffix(),
 		Config: &docker.Config{
 			Image:        c.imageRespository + ":" + c.imageTag,
+			Entrypoint:   c.entrypoint,
 			Cmd:          c.runArgs,
 			ExposedPorts: c.exposedPorts,
 			Env:          c.envs,
 		},
 		HostConfig: &docker.HostConfig{
 			PortBindings: c.portBindings,
+			Links:        c.links,
 		},
 		Context: context.TODO(),
 	})

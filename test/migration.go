@@ -14,6 +14,8 @@ type MigrationOptions struct {
 	// this command will override the default command.
 	// "bundle" "exec" "rake" "db:migrate"
 	Command []string
+	// override default entrypoint
+	Entrypoint []string
 }
 
 // RunMigrationContainer creates the migration container and connects to the
@@ -67,6 +69,8 @@ func RunMigrationContainer(dbContainer *SQLContainer, options MigrationOptions) 
 			},
 		),
 		RunOptions(command),
+		DockerRunLink(dbContainer.container.ID+":DB"),
+		Entrypoint(options.Entrypoint),
 	)
 
 	if err := container.Start(); err != nil {
@@ -128,6 +132,8 @@ func RunGoMigrationContainer(dbContainer *SQLContainer, options MigrationOptions
 		ImageRepository(options.ImageRepository),
 		ImageTag(options.ImageTag),
 		RunOptions(command),
+		DockerRunLink(dbContainer.container.ID+":DB"),
+		Entrypoint(options.Entrypoint),
 	)
 
 	if err := container.Start(); err != nil {

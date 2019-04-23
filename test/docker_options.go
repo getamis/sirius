@@ -83,6 +83,12 @@ func Ports(ports ...int) Option {
 	}
 }
 
+func Entrypoint(entrypoint []string) Option {
+	return func(c *Container) {
+		c.entrypoint = entrypoint
+	}
+}
+
 func RunOptions(args []string) Option {
 	return func(c *Container) {
 		c.runArgs = args
@@ -92,6 +98,16 @@ func RunOptions(args []string) Option {
 func DockerEnv(env []string) Option {
 	return func(c *Container) {
 		c.envs = env
+	}
+}
+
+func DockerRunLink(link string) Option {
+	return func(c *Container) {
+		if c.links == nil {
+			c.links = []string{link}
+		} else {
+			c.links = append(c.links, link)
+		}
 	}
 }
 

@@ -58,7 +58,7 @@ func (s *server) Liveness(ctx context.Context, req *EmptyRequest) (*EmptyRespons
 
 // Readiness is represented that whether application is ready to start accepting traffic or not.
 func (s *server) Readiness(ctx context.Context, req *EmptyRequest) (*EmptyResponse, error) {
-	if err := CheckHealth(ctx, s.checkFns); err != nil {
+	if err := checkHealth(ctx, s.checkFns); err != nil {
 		log.Error("Failed to check readiness", "err", err)
 		return nil, status.Error(codes.Unavailable, err.Error())
 	}

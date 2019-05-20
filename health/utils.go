@@ -43,11 +43,15 @@ func GRPCServerHealthChecker(addr, serviceName string) CheckFn {
 	}
 }
 
-func CheckHealth(ctx context.Context, checkFns []CheckFn) error {
+func checkHealth(parentCtx context.Context, checkFns []CheckFn) error {
 	if len(checkFns) == 0 {
 		return nil
 	}
 	errCh := make(chan error, len(checkFns))
+
+	ctx, cancel := context.WithCancel(parentCtx)
+	defer cancel()
+
 	for _, checker := range checkFns {
 		go func(checker CheckFn) {
 			errCh <- checker(ctx)
@@ -65,7 +69,7 @@ func CheckHealth(ctx context.Context, checkFns []CheckFn) error {
 // SetLivenessAndReadiness sets the liveness and readiness route in http server mux
 func SetLivenessAndReadiness(mux *http.ServeMux, checkFns ...CheckFn) {
 	mux.HandleFunc("/readiness", func(rw http.ResponseWriter, r *http.Request) {
-		if err := CheckHealth(r.Context(), checkFns); err != nil {
+		if err := checkHealth(r.Context(), checkFns); err != nil {
 			log.Error("Failed to check readiness", "err", err)
 			rw.WriteHeader(http.StatusServiceUnavailable)
 			return

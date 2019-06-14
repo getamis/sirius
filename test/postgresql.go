@@ -23,7 +23,6 @@ import (
 	"github.com/getamis/sirius/database/postgresql"
 	"github.com/getamis/sirius/log"
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
 )
 
 const (

@@ -59,7 +59,6 @@ func checkHealth(parentCtx context.Context, checkFns []CheckFn) error {
 	}
 	for range checkFns {
 		if err := <-errCh; err != nil {
-			log.Error("Failed to check readiness", "err", err)
 			return err
 		}
 	}
@@ -70,7 +69,6 @@ func checkHealth(parentCtx context.Context, checkFns []CheckFn) error {
 func SetLivenessAndReadiness(mux *http.ServeMux, checkFns ...CheckFn) {
 	mux.HandleFunc("/readiness", func(rw http.ResponseWriter, r *http.Request) {
 		if err := checkHealth(r.Context(), checkFns); err != nil {
-			log.Error("Failed to check readiness", "err", err)
 			rw.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}

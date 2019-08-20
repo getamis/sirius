@@ -30,6 +30,13 @@ func APIs(apis ...API) ServerOption {
 	}
 }
 
+// SeverOptions passes additional gRPC server options
+func SeverOptions(opts ...grpc.ServerOption) ServerOption {
+	return func(s *Server) {
+		s.serverOpts = append(s.serverOpts, opts...)
+	}
+}
+
 // Credentials for the RPC server
 func Credentials(credentials *tls.Config) ServerOption {
 	return func(s *Server) {

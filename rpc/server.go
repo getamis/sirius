@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/getamis/sirius/metrics"
-	"github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 )
 
 // NewServer creates a gRPC server with pre-configured services
@@ -54,6 +54,7 @@ type Server struct {
 	grpcMetrics        metrics.ServerMetrics
 	streamInterceptors []grpc.StreamServerInterceptor
 	unaryInterceptors  []grpc.UnaryServerInterceptor
+	serverOpts         []grpc.ServerOption
 
 	apis []API
 }
@@ -84,7 +85,7 @@ func (s *Server) Shutdown() {
 // ----------------------------------------------------------------------------
 
 func (s *Server) createGRPCServer() {
-	options := []grpc.ServerOption{}
+	options := s.serverOpts
 
 	// credentials
 	if s.credentials != nil {

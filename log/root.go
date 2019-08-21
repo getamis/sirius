@@ -25,7 +25,7 @@ func init() {
 
 	root.SetHandler(
 		MultiHandler(
-			StreamHandler(os.Stdout, TerminalFormat(true)),
+			StreamHandler(os.Stdout, TerminalFormat(false)),
 		),
 	)
 }

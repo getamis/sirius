@@ -65,7 +65,7 @@ deps:
 	docker pull amazon/dynamodb-local:latest
 	docker pull rabbitmq:3.6.2-management
 	docker pull redis:3-alpine
-	docker pull vault:latest
+	docker pull vault:1.0.3
 
 clean:
 	rm -fr $(GOBIN)/*

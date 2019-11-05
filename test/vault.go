@@ -162,7 +162,7 @@ func NewVaultContainer(options VaultOptions, containerOptions ...Option) (*Vault
 			// "too many arguments" will raise.
 			append([]Option{
 				ImageRepository("vault"),
-				ImageTag("latest"),
+				ImageTag("1.0.3"),
 				DockerEnv([]string{
 					fmt.Sprintf("VAULT_DEV_ROOT_TOKEN_ID=%s", options.Token),
 					fmt.Sprintf("VAULT_DEV_LISTEN_ADDRESS=%s", net.JoinHostPort(options.ListenAddr, options.Port)),

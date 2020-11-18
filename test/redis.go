@@ -16,52 +16,155 @@ package test
 
 import (
 	"fmt"
+	"net"
+	"os"
 	"time"
 
+	"github.com/getamis/sirius/log"
 	redis "gopkg.in/redis.v5"
 )
 
+const (
+	DefaultRedisPort = "6379"
+)
+
+type RedisOptions struct {
+	Host string
+	Port string
+}
+
+func (o RedisOptions) Endpoint() string {
+	return net.JoinHostPort(o.Host, o.Port)
+}
+
+// UpdateHostFromContainer updates the redis host field according to the current environment
+//
+// If we're inside the container, we need to override the hostname
+// defined in the option.
+// If not, we should use the default value 127.0.0.1 because we will need to connect to the host port.
+// please note that the TEST_REDIS_HOST can be overridden.
+func (o *RedisOptions) UpdateHostFromContainer(c *Container) error {
+	if IsInsideContainer() {
+		inspectedContainer, err := c.dockerClient.InspectContainer(c.container.ID)
+		if err != nil {
+			return err
+		}
+		o.Host = inspectedContainer.NetworkSettings.IPAddress
+	}
+	return nil
+}
+
 type RedisContainer struct {
-	container *Container
-	URL       string
+	*Container
+	Options  RedisOptions
+	Endpoint string
 }
 
-func (container *RedisContainer) Start() error {
-	return container.container.Start()
+func (c *RedisContainer) Start() error {
+	err := c.Container.Start()
+	if err != nil {
+		return err
+	}
+
+	if err := c.Options.UpdateHostFromContainer(c.Container); err != nil {
+		return err
+	}
+
+	c.Endpoint = c.Options.Endpoint()
+	return nil
 }
 
-func (container *RedisContainer) Suspend() error {
-	return container.container.Suspend()
+func (c *RedisContainer) Teardown() error {
+	if c.Container != nil && c.Container.Started {
+		return c.Container.Stop()
+	}
+
+	return nil
 }
 
-func (container *RedisContainer) Stop() error {
-	return container.container.Stop()
+// RedisOptions returns the redis options that will be used for the test
+// cases to connect to.
+func LoadRedisOptions() RedisOptions {
+	options := RedisOptions{
+		Host: "localhost",
+		Port: DefaultRedisPort,
+	}
+	if host, ok := os.LookupEnv("TEST_REDIS_HOST"); ok {
+		options.Host = host
+	}
+	if val, ok := os.LookupEnv("TEST_REDIS_PORT"); ok {
+		options.Port = val
+	}
+	return options
 }
 
-func NewRedisContainer() (*RedisContainer, error) {
-	port := 6379
-	endpoint := fmt.Sprintf("127.0.0.1:%d", port)
-	checker := func(c *Container) error {
-		return retry(10, 5*time.Second, func() error {
+func SetupRedis() (*RedisContainer, error) {
+	options := LoadRedisOptions()
+
+	// Explicit redis host is specified
+	if _, ok := os.LookupEnv("TEST_REDIS_HOST"); ok {
+		return &RedisContainer{
+			Options:  options,
+			Endpoint: options.Endpoint(),
+		}, nil
+	}
+
+	c := NewRedisContainer(options)
+
+	if err := c.Start(); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func NewRedisHealthChecker(options RedisOptions) ContainerCallback {
+	return func(c *Container) error {
+		if IsInsideContainer() {
+			if err := options.UpdateHostFromContainer(c); err != nil {
+				return err
+			}
+		}
+
+		return retry(10, 1*time.Second, func() error {
+			log.Debug("Checking redis status", "endpoint", options.Endpoint())
 			c := redis.NewClient(&redis.Options{
-				Addr: endpoint,
+				Addr: options.Endpoint(),
 			})
 			if c == nil {
-				return fmt.Errorf("failed to connect to %s", endpoint)
+				return fmt.Errorf("failed to connect to %s", options.Endpoint())
 			}
 			return c.Ping().Err()
 		})
 	}
-	container := &RedisContainer{
-		container: NewDockerContainer(
-			ImageRepository("redis"),
-			ImageTag("6-alpine"),
-			Ports(port),
-			HealthChecker(checker),
-		),
+}
+
+func NewRedisContainer(options RedisOptions, containerOptions ...Option) *RedisContainer {
+	checker := NewRedisHealthChecker(options)
+
+	if IsInsideContainer() {
+		containerOptions = append(containerOptions, ExposePorts(DefaultRedisPort))
+	} else {
+		// redis container port always expose the server port on 8000
+		// bind the redis default port to the custom port on the host.
+		containerOptions = append(containerOptions, ExposePorts(DefaultRedisPort))
+		containerOptions = append(containerOptions, HostPortBindings(PortBinding{DefaultRedisPort + "/tcp", options.Port}))
 	}
 
-	container.URL = endpoint
-
-	return container, nil
+	// Create the container, please note that the container is not started yet.
+	return &RedisContainer{
+		Options: options,
+		Container: NewDockerContainer(
+			// this is to keep some flexibility for passing extra container options..
+			// however if we literally use "..." in the method call, an error
+			// "too many arguments" will raise.
+			append([]Option{
+				ImageRepository("redis"),
+				ImageTag("6-alpine"),
+				DockerEnv([]string{}),
+				HealthChecker(checker),
+			}, containerOptions...)...,
+		),
+		Endpoint: options.Endpoint(),
+	}
 }

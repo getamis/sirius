@@ -55,7 +55,7 @@ func NewRedisContainer() (*RedisContainer, error) {
 	container := &RedisContainer{
 		container: NewDockerContainer(
 			ImageRepository("redis"),
-			ImageTag("3-alpine"),
+			ImageTag("6-alpine"),
 			Ports(port),
 			HealthChecker(checker),
 		),

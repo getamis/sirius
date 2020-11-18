@@ -23,38 +23,37 @@ import (
 )
 
 func TestRedisContainer(t *testing.T) {
-	container, _ := NewRedisContainer()
+	container, _ := SetupRedis()
 	assert.NotNil(t, container)
-	assert.NoError(t, container.Start())
 
 	conn := redis.NewClient(&redis.Options{
-		Addr: container.URL,
+		Addr: container.Endpoint,
 	})
 	assert.NotNil(t, conn)
 	assert.NoError(t, conn.Ping().Err(), "should be no error")
 
-	// stop rabbitmq
+	// stop redis
 	assert.NoError(t, container.Suspend())
 	time.Sleep(100 * time.Millisecond)
 	conn = redis.NewClient(&redis.Options{
-		Addr: container.URL,
+		Addr: container.Endpoint,
 	})
 	assert.Error(t, conn.Ping().Err(), "should got error")
 
-	// restart rabbitmq
+	// restart redis
 	assert.NoError(t, container.Start())
 	time.Sleep(time.Second)
 	conn = redis.NewClient(&redis.Options{
-		Addr: container.URL,
+		Addr: container.Endpoint,
 	})
 	assert.NotNil(t, conn)
 	assert.NoError(t, conn.Ping().Err(), "should be no error")
 
-	// close rabbitmq
-	assert.NoError(t, container.Stop())
+	// close redis
+	assert.NoError(t, container.Teardown())
 	time.Sleep(100 * time.Millisecond)
 	conn = redis.NewClient(&redis.Options{
-		Addr: container.URL,
+		Addr: container.Endpoint,
 	})
 	assert.Error(t, conn.Ping().Err(), "should got error")
 }

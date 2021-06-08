@@ -27,9 +27,10 @@ import (
 )
 
 type PrometheusRegistry struct {
+	*prom.Registry
+
 	namespace   string
 	labels      map[string]string
-	registry    *prom.Registry
 	httpHandler http.Handler
 }
 
@@ -40,7 +41,7 @@ func NewPrometheusRegistry() *PrometheusRegistry {
 	registry := prom.NewRegistry()
 	registry.MustRegister(prom.NewGoCollector())
 	return &PrometheusRegistry{
-		registry:    registry,
+		Registry:    registry,
 		labels:      defaultLabels,
 		httpHandler: promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
 	}
@@ -70,7 +71,7 @@ func (p *PrometheusRegistry) NewHttpServerMetrics(opts ...Option) HttpServerMetr
 	}
 	httpMetrics := NewHttpMetrics(ToGRPCPromCounterOption(options))
 	httpMetrics.EnableHandlingTimeHistogram(ToGRPCPromHistogramOption(options))
-	err := p.registry.Register(httpMetrics)
+	err := p.Register(httpMetrics)
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
@@ -88,7 +89,7 @@ func (p *PrometheusRegistry) NewServerMetrics(opts ...Option) ServerMetrics {
 	}
 	grpcMetrics := grpcProm.NewServerMetrics(ToGRPCPromCounterOption(options))
 	grpcMetrics.EnableHandlingTimeHistogram(ToGRPCPromHistogramOption(options))
-	err := p.registry.Register(grpcMetrics)
+	err := p.Register(grpcMetrics)
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
@@ -111,7 +112,7 @@ func (p *PrometheusRegistry) NewCounter(key string, opts ...Option) Counter {
 		Help:        key,
 		ConstLabels: prom.Labels(options.Labels),
 	})
-	err := p.registry.Register(cnt)
+	err := p.Register(cnt)
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
@@ -134,7 +135,7 @@ func (p *PrometheusRegistry) NewGauge(key string, opts ...Option) Gauge {
 		Help:        key,
 		ConstLabels: prom.Labels(options.Labels),
 	})
-	err := p.registry.Register(g)
+	err := p.Register(g)
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
@@ -157,7 +158,7 @@ func (p *PrometheusRegistry) NewGaugeVec(key string, labelNames []string, opts .
 		Help:        key,
 		ConstLabels: prom.Labels(options.Labels),
 	}, labelNames)
-	err := p.registry.Register(cnt)
+	err := p.Register(cnt)
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
@@ -181,7 +182,7 @@ func (p *PrometheusRegistry) NewHistogram(key string, opts ...Option) Histogram 
 		Help:        key,
 		ConstLabels: prom.Labels(options.Labels),
 	})
-	err := p.registry.Register(h)
+	err := p.Register(h)
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
@@ -204,7 +205,7 @@ func (p *PrometheusRegistry) NewHistogramVec(key string, labels []string, opts .
 		Help:        key,
 		ConstLabels: prom.Labels(options.Labels),
 	}, labels)
-	err := p.registry.Register(hv)
+	err := p.Register(hv)
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {
@@ -246,7 +247,7 @@ func (p *PrometheusRegistry) NewCounterVec(key string, labelNames []string, opts
 		Help:        key,
 		ConstLabels: prom.Labels(options.Labels),
 	}, labelNames)
-	err := p.registry.Register(cnt)
+	err := p.Register(cnt)
 	if err != nil {
 		reg, ok := err.(prom.AlreadyRegisteredError)
 		if ok {

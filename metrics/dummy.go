@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"time"
 
+	prom "github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 )
 
@@ -27,6 +28,21 @@ type DummyRegistry struct {
 
 func NewDummyRegistry() *DummyRegistry {
 	return &DummyRegistry{}
+}
+
+// prom.Registerer interface
+func (d *DummyRegistry) Register(prom.Collector) error {
+	return nil
+}
+
+// prom.Registerer interface
+func (d *DummyRegistry) MustRegister(...prom.Collector) {
+
+}
+
+// prom.Registerer interface
+func (d *DummyRegistry) Unregister(prom.Collector) bool {
+	return false
 }
 
 func (d *DummyRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {

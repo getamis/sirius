@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/getamis/sirius/log"
+	prom "github.com/prometheus/client_golang/prometheus"
 )
 
 const MetricsEnabledFlag = "metrics"
@@ -40,6 +41,8 @@ func init() {
 
 // Registry is a metrics gather
 type Registry interface {
+	prom.Registerer
+	
 	NewHttpServerMetrics(opts ...Option) HttpServerMetrics
 	NewServerMetrics(opts ...Option) ServerMetrics
 	NewCounter(key string, opts ...Option) Counter

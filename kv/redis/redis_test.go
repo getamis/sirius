@@ -33,7 +33,10 @@ func makeRedisClient() store.Store {
 }
 
 func TestRedisStore(t *testing.T) {
-	container := test.NewRedisContainer(test.LoadRedisOptions())
+	container := test.NewRedisContainer(test.RedisOptions{
+		Host: "localhost",
+		Port: "6379",
+	})
 	assert.NoError(t, container.Start())
 	defer container.Stop()
 	kv := makeRedisClient()

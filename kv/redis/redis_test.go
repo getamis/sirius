@@ -33,10 +33,7 @@ func makeRedisClient() store.Store {
 }
 
 func TestRedisStore(t *testing.T) {
-	container, err := test.NewRedisContainer()
-	if err != nil {
-		t.Fatal("failed to new REDIS container")
-	}
+	container := test.NewRedisContainer(test.LoadRedisOptions())
 	assert.NoError(t, container.Start())
 	defer container.Stop()
 	kv := makeRedisClient()

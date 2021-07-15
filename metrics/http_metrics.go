@@ -15,7 +15,10 @@
 package metrics
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -136,6 +139,15 @@ type responseWriter struct {
 func (r *responseWriter) WriteHeader(status int) {
 	r.status = status
 	r.ResponseWriter.WriteHeader(status)
+}
+
+// For web socket traffics
+func (rw *responseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hi, ok := rw.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("not implemented")
+	}
+	return hi.Hijack()
 }
 
 func (r *responseWriter) Status() int {

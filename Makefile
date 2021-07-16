@@ -64,7 +64,6 @@ deps:
 	docker pull quay.io/coreos/etcd:v3.0.6
 	docker pull amazon/dynamodb-local:latest
 	docker pull rabbitmq:3.6.2-management
-	docker pull redis:3-alpine
 	docker pull redis:6-alpine
 	docker pull vault:1.0.3
 

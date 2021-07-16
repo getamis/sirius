@@ -53,7 +53,7 @@ func (s *server) Shutdown() {
 
 // Liveness is represented that whether application is able to make progress or not.
 func (s *server) Liveness(ctx context.Context, req *EmptyRequest) (*EmptyResponse, error) {
-	return nil, nil
+	return &EmptyResponse{}, nil
 }
 
 // Readiness is represented that whether application is ready to start accepting traffic or not.
@@ -61,5 +61,5 @@ func (s *server) Readiness(ctx context.Context, req *EmptyRequest) (*EmptyRespon
 	if err := checkHealth(ctx, s.checkFns); err != nil {
 		return nil, status.Error(codes.Unavailable, err.Error())
 	}
-	return nil, nil
+	return &EmptyResponse{}, nil
 }

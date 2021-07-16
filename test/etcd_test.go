@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/etcd/client"
 	"github.com/stretchr/testify/assert"
+	client "go.etcd.io/etcd/client/v3"
 	"golang.org/x/net/context"
 )
 
@@ -31,15 +31,14 @@ func TestEtcdContainer(t *testing.T) {
 
 	cfg := client.Config{
 		Endpoints: []string{container.URL},
-		Transport: client.DefaultTransport,
 		// set timeout per request to fail fast when the target endpoint is unavailable
-		HeaderTimeoutPerRequest: time.Second,
+		DialTimeout: time.Second,
 	}
 
 	c, err := client.New(cfg)
 	assert.NoError(t, err, "should be no error")
 
-	kapi := client.NewKeysAPI(c)
-	_, err = kapi.Set(context.Background(), "/foo", "bar", nil)
+	kapi := client.NewKV(c)
+	_, err = kapi.Put(context.Background(), "/foo", "bar")
 	assert.NoError(t, err, "should be no error")
 }

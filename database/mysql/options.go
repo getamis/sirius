@@ -93,7 +93,7 @@ func (o *options) String() string {
 		tls = "false"
 	}
 	return fmt.Sprintf(
-		"%s:%s@%s(%s:%s)/%s?charset=utf8&parseTime=True&loc=%s&allowNativePasswords=%v&tls=%v",
+		"%s:%s@%s(%s:%s)/%s?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=True&loc=%s&allowNativePasswords=%v&tls=%v",
 		o.UserName,
 		o.Password,
 		o.Protocol,

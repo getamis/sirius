@@ -171,9 +171,10 @@ func (c *Container) Stop() error {
 		c.Started = false
 	}()
 	return c.dockerClient.RemoveContainer(docker.RemoveContainerOptions{
-		ID:      c.container.ID,
-		Force:   true,
-		Context: context.TODO(),
+		ID:            c.container.ID,
+		RemoveVolumes: true,
+		Force:         true,
+		Context:       context.TODO(),
 	})
 }
 

@@ -6,7 +6,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Microsoft/go-winio v0.4.13 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
-	github.com/aws/aws-sdk-go v1.19.39
+	github.com/aws/aws-sdk-go v1.34.0
 	github.com/containerd/continuity v0.0.0-20190426062206-aaeac12a7ffc // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20190412130859-3b1d194e553a // indirect
 	github.com/docker/docker v1.4.2-0.20171124023022-dfe2c023a34d // indirect
@@ -15,7 +15,7 @@ require (
 	github.com/erikstmartin/go-testdb v0.0.0-20160219214506-8d10e4a1bae5 // indirect
 	github.com/frankban/quicktest v1.4.1 // indirect
 	github.com/fsouza/go-dockerclient v1.2.0
-	github.com/go-sql-driver/mysql v1.4.1
+	github.com/go-sql-driver/mysql v1.5.0
 	github.com/go-stack/stack v1.8.0
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2

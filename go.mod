@@ -39,7 +39,7 @@ require (
 	github.com/opencontainers/runc v0.1.1 // indirect
 	github.com/opencontainers/selinux v1.8.2 // indirect
 	github.com/pierrec/lz4 v2.3.0+incompatible // indirect
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	github.com/rollbar/rollbar-go v1.0.1
 	github.com/rs/cors v1.4.0
 	github.com/satori/go.uuid v1.2.0

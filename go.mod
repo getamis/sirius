@@ -49,7 +49,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/negroni v0.3.0
 	go.etcd.io/etcd/client/v3 v3.5.0
-	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
+	golang.org/x/net v0.7.0
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 	google.golang.org/grpc v1.38.0
 	gopkg.in/redis.v5 v5.2.9

@@ -23,7 +23,7 @@ import (
 	"github.com/getamis/sirius/metrics"
 	"github.com/getamis/sirius/rpc/pb"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/urfave/negroni"
+	"github.com/urfave/negroni/v3"
 )
 
 // NewProxy creates a RESTful proxy server that routes RESTful request to gRPC server

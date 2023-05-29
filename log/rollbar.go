@@ -51,10 +51,7 @@ func (h *RollbarHandler) Log(r *Record) error {
 		interfaces = append(interfaces, h.SkipLevel)
 	}
 
-	// Add timestamp
 	metaData := make(map[string]interface{})
-	metaData["timestamp"] = r.Time.Format(termTimeFormat)
-
 	// Append location
 	if atomic.LoadUint32(&locationEnabled) != 0 {
 		// Log origin printing was requested, format the location path and line number

@@ -18,6 +18,7 @@ require (
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.3
 	github.com/prometheus/client_golang v1.11.1
+	github.com/prometheus/client_model v0.2.0
 	github.com/rollbar/rollbar-go v1.0.1
 	github.com/rs/cors v1.4.0
 	github.com/satori/go.uuid v1.2.0
@@ -83,7 +84,6 @@ require (
 	github.com/pierrec/lz4 v2.3.0+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect

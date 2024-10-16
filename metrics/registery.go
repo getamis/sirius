@@ -42,7 +42,8 @@ func init() {
 // Registry is a metrics gather
 type Registry interface {
 	prom.Registerer
-	
+	prom.Gatherer
+
 	NewHttpServerMetrics(opts ...Option) HttpServerMetrics
 	NewServerMetrics(opts ...Option) ServerMetrics
 	NewCounter(key string, opts ...Option) Counter

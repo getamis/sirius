@@ -20,6 +20,7 @@ import (
 	"time"
 
 	prom "github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"google.golang.org/grpc"
 )
 
@@ -44,6 +45,9 @@ func (d *DummyRegistry) MustRegister(...prom.Collector) {
 func (d *DummyRegistry) Unregister(prom.Collector) bool {
 	return false
 }
+
+// prom.Gatherer interface
+func (d *DummyRegistry) Gather() ([]*dto.MetricFamily, error) { return nil, nil }
 
 func (d *DummyRegistry) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")

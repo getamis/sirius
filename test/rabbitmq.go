@@ -39,21 +39,29 @@ func (container *RabbitMQContainer) Stop() error {
 }
 
 func NewRabbitMQContainer() (*RabbitMQContainer, error) {
-	port := 5672
+	containerPort := 5672
+	hostPort := 5673
 	guiPort := 15672
-	endpoint := fmt.Sprintf("amqp://guest:guest@127.0.0.1:%d", port)
+	endpoint := fmt.Sprintf("amqp://guest:guest@127.0.0.1:%d", hostPort)
 	checker := func(c *Container) error {
 		return retry(10, 5*time.Second, func() error {
 			conn, err := amqp.Dial(endpoint)
+			if err != nil {
+				return err
+			}
 			defer conn.Close()
-			return err
+			return nil
 		})
 	}
 	container := &RabbitMQContainer{
 		dockerContainer: NewDockerContainer(
 			ImageRepository("rabbitmq"),
-			ImageTag("3.6.2-management"),
-			Ports(port, guiPort),
+			ImageTag("3.13-management"),
+			HostPortBindings(
+				PortBinding{ContainerPort: fmt.Sprintf("%d", containerPort), HostPort: fmt.Sprintf("%d", hostPort)},
+				PortBinding{ContainerPort: fmt.Sprintf("%d", guiPort), HostPort: fmt.Sprintf("%d", guiPort)},
+			),
+			ExposePorts(fmt.Sprintf("%d", containerPort), fmt.Sprintf("%d", guiPort)),
 			HealthChecker(checker),
 		),
 	}

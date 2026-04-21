@@ -61,9 +61,9 @@ grpc: FORCE
 deps:
 	docker pull mysql:5.7
 	docker pull postgres:9.6
-	docker pull quay.io/coreos/etcd:v3.0.6
+	docker pull quay.io/coreos/etcd:v3.5.0
 	docker pull amazon/dynamodb-local:latest
-	docker pull rabbitmq:3.6.2-management
+	docker pull rabbitmq:3.13-management
 	docker pull redis:6-alpine
 	docker pull vault:1.0.3
 

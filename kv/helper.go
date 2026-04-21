@@ -26,8 +26,7 @@ func CreateEndpoints(addrs []string, scheme string) (entries []string) {
 
 // Normalize the key for each store to the form:
 //
-//     /path/to/key
-//
+//	/path/to/key
 func Normalize(key string) string {
 	return "/" + join(SplitKey(key))
 }
@@ -35,8 +34,7 @@ func Normalize(key string) string {
 // GetDirectory gets the full directory part of
 // the key to the form:
 //
-//     /path/to/
-//
+//	/path/to/
 func GetDirectory(key string) string {
 	parts := SplitKey(key)
 	parts = parts[:len(parts)-1]
@@ -63,7 +61,7 @@ func join(parts []string) string {
 type keyMaker func(identifier string, args ...string) string
 
 // NewKey given separator, package name, and tags to generate the key
-func NewKey(separator string, pkgName string, tags ...string) keyMaker {
+func NewKeyMaker(separator string, pkgName string, tags ...string) keyMaker {
 	prefix := append([]string{pkgName}, tags...)
 	return func(identifier string, args ...string) string {
 		return strings.Join(append(prefix, append([]string{identifier}, args...)...), separator)

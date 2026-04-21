@@ -32,42 +32,42 @@ func TestNewKeyMaker(t *testing.T) {
 		{
 			// full information
 			"pkg:tag1:tag1:idendtity1:arg1:arg1",
-			NewKey(seperator, "pkg", "tag1", "tag1"),
+			NewKeyMaker(seperator, "pkg", "tag1", "tag1"),
 			"idendtity1",
 			[]string{"arg1", "arg1"},
 		},
 		{
 			// missing tags
 			"pkg:idendtity2",
-			NewKey(seperator, "pkg"),
+			NewKeyMaker(seperator, "pkg"),
 			"idendtity2",
 			nil,
 		},
 		{
 			// missing args
 			"pkg:tag3:tag3:idendtity3",
-			NewKey(seperator, "pkg", "tag3", "tag3"),
+			NewKeyMaker(seperator, "pkg", "tag3", "tag3"),
 			"idendtity3",
 			nil,
 		},
 		{
 			// empty a args
 			"pkg:tag4:tag4:idendtity4",
-			NewKey(seperator, "pkg", "tag4", "tag4"),
+			NewKeyMaker(seperator, "pkg", "tag4", "tag4"),
 			"idendtity4",
 			[]string{},
 		},
 		{
 			// empty identity
 			"pkg:",
-			NewKey(seperator, "pkg"),
+			NewKeyMaker(seperator, "pkg"),
 			"",
 			[]string{},
 		},
 		{
 			// empty identity with a arg
 			"pkg::arg6",
-			NewKey(seperator, "pkg"),
+			NewKeyMaker(seperator, "pkg"),
 			"",
 			[]string{"arg6"},
 		},
@@ -79,7 +79,7 @@ func TestNewKeyMaker(t *testing.T) {
 }
 
 func ExampleNewKeyMaker() {
-	keyMaker := NewKey("/", "package", "tag1", "tag2")
+	keyMaker := NewKeyMaker("/", "package", "tag1", "tag2")
 	fmt.Println(keyMaker("golang"))
 	// Output: package/tag1/tag2/golang
 }
